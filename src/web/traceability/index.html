@@ -1361,23 +1361,52 @@ function writeLocal(data){
 }
 
 async function loadState(){
-  const d=readLocal();
-  if(d){
-    state=Object.assign({tolPct:1,leftovers:[],armours:[],prodlogs:[],mrOverrides:[],speeds:[]}, d);
-    state.leftovers=state.leftovers||[]; state.armours=state.armours||[];
-    state.prodlogs=state.prodlogs||[]; state.mrOverrides=state.mrOverrides||[];
-    state.speeds=Array.isArray(state.speeds)?state.speeds:[];
+  let fromAzure=false;
+  try{
+    const names={coils:'coils',draws:'draws',strands:'strands',armours:'armours',leftovers:'leftovers',prodlogs:'prodlogs',mroverrides:'mroverrides'};
+    const loaded={};
+    for(const [localName, table] of Object.entries(names)){
+      const r=await fetch('/api/copper/'+table);
+      if(!r.ok) throw new Error(table+' '+r.status);
+      loaded[localName]=await r.json();
+    }
+    if(Array.isArray(loaded.coils)&&loaded.coils.length){
+      state=Object.assign({tolPct:1,speeds:[]}, {
+        coils:loaded.coils,
+        draws:loaded.draws||[],
+        strands:loaded.strands||[],
+        armours:loaded.armours||[],
+        leftovers:loaded.leftovers||[],
+        prodlogs:loaded.prodlogs||[],
+        mrOverrides:loaded.mroverrides||[]
+      });
+      fromAzure=true;
+      writeLocal(state);
+    }
+  }catch(e){
+    console.warn('Azure traceability load failed', e);
+  }
+  if(!fromAzure){
+    const d=readLocal();
+    if(d){
+      state=Object.assign({tolPct:1,leftovers:[],armours:[],prodlogs:[],mrOverrides:[],speeds:[]}, d);
+      state.leftovers=state.leftovers||[]; state.armours=state.armours||[];
+      state.prodlogs=state.prodlogs||[]; state.mrOverrides=state.mrOverrides||[];
+      state.speeds=Array.isArray(state.speeds)?state.speeds:[];
+    }
   }
   state.draws.forEach(x=>{if(!x.srcType)x.srcType='coil';});
   const tolEl=document.getElementById('tol'); if(tolEl) tolEl.value=state.tolPct;
   lastSynced=JSON.parse(JSON.stringify(state));
   fsReady=true;
-  // ton→kg migration needs fsReady so saveState can write
   if(state.coils.length&&!state.coils.some(c=>(c.weight||0)>=100)) migrateTonToKg();
   const statusEl=document.getElementById('syncStatus');
-  if(statusEl){ statusEl.innerHTML='&#9679;&nbsp;local only — not synced'; statusEl.style.color='var(--green)'; }
+  if(statusEl){
+    statusEl.innerHTML=fromAzure?'&#9679;&nbsp;Azure · '+state.coils.length+' coils':'&#9679;&nbsp;local only — not synced';
+    statusEl.style.color='var(--green)';
+  }
   const who=document.getElementById('whoami');
-  if(who) who.textContent='Standalone · this browser';
+  if(who) who.textContent=fromAzure?'Azure copy · copper_traceability':'Standalone · this browser';
   renderAll();
   if(typeof renderReport==='function') renderReport();
   if(typeof renderCu==='function') renderCu();

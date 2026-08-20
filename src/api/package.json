@@ -1,0 +1,16 @@
+{
+  "name": "qicc-tools-api",
+  "version": "1.0.0",
+  "description": "Read/write Azure Postgres copies for the QICC Static Web App",
+  "main": "src/{index.js,functions/*.js}",
+  "scripts": {
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.11.0",
+    "pg": "^8.16.0"
+  },
+  "engines": {
+    "node": ">=20.0"
+  }
+}

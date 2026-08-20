@@ -617,8 +617,22 @@ document.addEventListener('click',e=>{
 
 // ─── Data layer: Supabase with localStorage cache fallback ────────
 
-/** Load apps from Supabase; on failure fall back to the local cache. */
+/** Load apps from Azure Postgres; fall back to cache, then Supabase. */
 async function loadApps(){
+  try{
+    const r=await fetch('/api/copper/suite_apps?is_active=eq.true&order=sort_order.asc,created_at.asc');
+    if(r.ok){
+      const data=await r.json();
+      if(Array.isArray(data)){
+        APPS=data;
+        try{localStorage.setItem(CACHE_KEY,JSON.stringify(APPS));}catch(e){}
+        setSyncStatus(true);
+        return;
+      }
+    }
+  }catch(err){
+    console.error('Azure load failed:',err);
+  }
   if(sb){
     try{
       const{data,error}=await sb
@@ -636,7 +650,6 @@ async function loadApps(){
       console.error('Supabase load failed:',err);
     }
   }
-  // Fallback: cached copy
   try{
     const raw=localStorage.getItem(CACHE_KEY);
     APPS=raw?JSON.parse(raw):[];

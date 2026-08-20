@@ -3,6 +3,7 @@
   "configurations": {
     "qicc-tools": {
       "appLocation": "src/web",
+      "apiLocation": "src/api",
       "outputLocation": ".",
       "appName": "qicc-tools",
       "resourceGroupName": "rg-qicc-tools",

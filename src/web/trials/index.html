@@ -700,6 +700,19 @@ window.LocalStore = (function () {
       t.forEach(([k, v]) => { if (Array.isArray(v)) mem[k] = v; });
       const f = await idbEntries('files');
       f.forEach(([k, v]) => files.set(k, v));
+      try {
+        for (const table of TABLES) {
+          const r = await fetch('/api/qicc/' + table);
+          if (!r.ok) continue;
+          const rows = await r.json();
+          if (Array.isArray(rows) && rows.length) {
+            mem[table] = rows;
+            await save(table);
+          }
+        }
+      } catch (e) {
+        console.warn('Azure trials load failed', e);
+      }
     })();
     return readyP;
   }

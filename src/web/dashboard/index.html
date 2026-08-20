@@ -4411,22 +4411,16 @@ function setPublishStatus(msg,kind){
   el.className='rl-status'+(kind?(' '+kind):'');
 }
 
-/* ================= LIVE DASHBOARD (Supabase) =================
-   Uses the qicc-production Supabase project. The anon key is safe to embed;
-   writes go through publish_prod_dashboard() which checks the team passcode
-   server-side. Change the passcode in Supabase → prod_dashboard_secrets. */
-const SUPABASE_CONFIG={
-  url: 'https://svbpruvplhfkbintcogy.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2YnBydXZwbGhma2JpbnRjb2d5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwMDkyNTksImV4cCI6MjEwMTU4NTI1OX0.8u4LNf99jwDHgVmxe1TnY_xaDnK_G5fdRNXNOL1epjI'
-};
+/* ================= LIVE DASHBOARD (Azure Postgres copy) =================
+   Reads prod_dashboard_live from the qicc_production database via /api/qicc. */
+const DATA_API = '/api/qicc';
 function isSupabaseConfigured(){
-  return !!(SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey && !SUPABASE_CONFIG.anonKey.includes('YOUR_'));
+  return true;
 }
 function sbHeaders(extra){
   return Object.assign({
-    apikey: SUPABASE_CONFIG.anonKey,
-    Authorization: 'Bearer '+SUPABASE_CONFIG.anonKey,
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    Accept: 'application/json'
   }, extra||{});
 }
 
@@ -4464,7 +4458,7 @@ async function loadFromSupabase(){
   try{
     const ctrl=new AbortController();
     const timer=setTimeout(()=>ctrl.abort(),8000);
-    const r=await fetch(SUPABASE_CONFIG.url+'/rest/v1/prod_dashboard_live?id=eq.live&select=data_gz,file_names,updated_at',{
+    const r=await fetch(DATA_API+'/prod_dashboard_live?id=eq.live&select=data_gz,file_names,updated_at',{
       headers: sbHeaders({Accept: 'application/json'}),
       signal: ctrl.signal
     });
@@ -4480,7 +4474,7 @@ async function loadFromSupabase(){
     _dailyDataLoaded=true;
     saveDataCoreToCache(DATA);
     try{ localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify(liveData)); }catch(e){}
-    markDataCacheSource('supabase', liveData.asOf, payload.updated_at?new Date(payload.updated_at).getTime():Date.now());
+    markDataCacheSource('azure', liveData.asOf, payload.updated_at?new Date(payload.updated_at).getTime():Date.now());
     recomputeDerivedFromData();
     render();
     const pill=document.getElementById('liveStatusLine');
@@ -4503,7 +4497,7 @@ async function loadOeeCmpCommentsFromSupabase(){
   try{
     const ctrl=new AbortController();
     const timer=setTimeout(()=>ctrl.abort(),8000);
-    const r=await fetch(SUPABASE_CONFIG.url+'/rest/v1/prod_oee_cmp_comments?select=month,machine,comment',{
+    const r=await fetch(DATA_API+'/prod_oee_cmp_comments?select=month,machine,comment',{
       headers: sbHeaders({Accept: 'application/json'}),
       signal: ctrl.signal
     });
@@ -4524,7 +4518,7 @@ async function loadOeeCmpCommentsFromSupabase(){
 async function saveOeeCmpCommentRemote(month,mc,text){
   if(!isSupabaseConfigured()) return;
   try{
-    const base=SUPABASE_CONFIG.url+'/rest/v1/prod_oee_cmp_comments';
+    const base=DATA_API+'/prod_oee_cmp_comments';
     if(!text){
       await fetch(base+'?month=eq.'+encodeURIComponent(month)+'&machine=eq.'+encodeURIComponent(mc),{
         method:'DELETE',
@@ -4576,13 +4570,13 @@ async function publishToLive(opts){
       setPublishStatus('Data is too large to publish live ('+Math.round(dataGz.length/1024)+' KB compressed, limit ~1000 KB). Use Download instead.','err');
       return false;
     }
-    const r=await fetch(SUPABASE_CONFIG.url+'/rest/v1/rpc/publish_prod_dashboard',{
-      method:'POST',
+    const r=await fetch(DATA_API+'/prod_dashboard_live?id=eq.live',{
+      method:'PATCH',
       headers: sbHeaders(),
       body: JSON.stringify({
-        p_passcode: passcode,
-        p_data_gz: dataGz,
-        p_file_names: window.__lastUploadedFileNames||[]
+        data_gz: dataGz,
+        file_names: window.__lastUploadedFileNames||[],
+        updated_at: new Date().toISOString()
       })
     });
     if(!r.ok){
@@ -4599,7 +4593,7 @@ async function publishToLive(opts){
     rememberPasscode(passcode);
     setPublishStatus('Saved to the live dashboard — everyone with the link now sees this data, and it stays after refresh.','ok');
     if(pcEl) pcEl.value='';
-    markDataCacheSource('supabase', DATA.asOf);
+    markDataCacheSource('azure', DATA.asOf);
     toast('Saved to live dashboard');
     const pill=document.getElementById('liveStatusLine');
     const txt=document.getElementById('liveStatusText');

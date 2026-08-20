@@ -8,6 +8,10 @@
     { "route": "/setup-scrap", "rewrite": "/setup-scrap/index.html" },
     { "route": "/ccv", "rewrite": "/ccv/index.html" }
   ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "/dashboard/*", "/traceability/*", "/trials/*", "/material-consumption/*", "/skill-matrix/*", "/setup-scrap/*", "/ccv/*", "/*.{png,jpg,gif,css,js,ico,svg,woff,woff2,json}"]
+  },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin"
