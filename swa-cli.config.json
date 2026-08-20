@@ -1,0 +1,13 @@
+{
+  "$schema": "https://aka.ms/azure/static-web-apps-cli/schema",
+  "configurations": {
+    "qicc-tools": {
+      "appLocation": "src/web",
+      "outputLocation": ".",
+      "appName": "qicc-tools",
+      "resourceGroupName": "rg-qicc-tools",
+      "env": "production",
+      "resourceGroup": "rg-qicc-tools"
+    }
+  }
+}

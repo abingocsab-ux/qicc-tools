@@ -1,0 +1,995 @@
+{
+  "sequences": [
+    "change_types_id_seq",
+    "downtime_categories_id_seq",
+    "ds_bom_id_seq",
+    "ds_conductors_id_seq",
+    "ds_stages_id_seq",
+    "materials_id_seq",
+    "mc_items_id_seq",
+    "mc_model_id_seq",
+    "mc_nav_ledger_id_seq",
+    "mc_nav_snapshots_id_seq",
+    "mc_products_id_seq",
+    "mc_run_items_id_seq",
+    "mc_run_materials_id_seq",
+    "mc_runs_id_seq",
+    "mc_thickness_id_seq",
+    "process_types_id_seq",
+    "shifts_id_seq"
+  ],
+  "tables": {
+    "coils": "id text NOT NULL, data jsonb NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "draws": "id text NOT NULL, data jsonb NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "strands": "id text NOT NULL, data jsonb NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "armours": "id text NOT NULL, data jsonb NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "profiles": "id uuid NOT NULL, email text, role text DEFAULT 'viewer'::text NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "process_types": "id smallint GENERATED ALWAYS AS IDENTITY, code text NOT NULL, name text NOT NULL, sequence_order smallint NOT NULL, produces_new_batch boolean DEFAULT true NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "machines": "id uuid DEFAULT gen_random_uuid() NOT NULL, code text NOT NULL, name text NOT NULL, process_type_id smallint, status text DEFAULT 'active'::text NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "job_orders": "id uuid DEFAULT gen_random_uuid() NOT NULL, job_order_no text NOT NULL, product_spec text NOT NULL, customer text, quantity_ordered numeric(14,3) NOT NULL, uom text DEFAULT 'M'::text NOT NULL, status text DEFAULT 'draft'::text NOT NULL, priority smallint DEFAULT 3 NOT NULL, planned_start_date date, planned_end_date date, notes text, created_by uuid, released_by uuid, released_at timestamp with time zone, closed_at timestamp with time zone, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "job_order_process_steps": "id uuid DEFAULT gen_random_uuid() NOT NULL, job_order_id uuid NOT NULL, process_type_id smallint NOT NULL, sequence_no smallint NOT NULL, planned_machine_id uuid, status text DEFAULT 'pending'::text NOT NULL, started_at timestamp with time zone, finished_at timestamp with time zone, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "job_order_audit_log": "id uuid DEFAULT gen_random_uuid() NOT NULL, job_order_id uuid NOT NULL, action text NOT NULL, changed_by uuid, before_value jsonb, after_value jsonb, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "shifts": "id smallint GENERATED ALWAYS AS IDENTITY, code text NOT NULL, name text NOT NULL, start_time time without time zone, end_time time without time zone, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "prodlogs": "id text NOT NULL, data jsonb NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "suite_apps": "id uuid DEFAULT gen_random_uuid() NOT NULL, name text NOT NULL, url text NOT NULL, icon text DEFAULT '\ud83d\udce6'::text NOT NULL, color text DEFAULT 'red'::text NOT NULL, badge text DEFAULT 'App'::text NOT NULL, tags text[] DEFAULT '{}'::text[] NOT NULL, description text, sort_order integer DEFAULT 100 NOT NULL, is_builtin boolean DEFAULT false NOT NULL, is_active boolean DEFAULT true NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "mroverrides": "id text NOT NULL, data jsonb NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "settings": "key text NOT NULL, data jsonb NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "leftovers": "id text NOT NULL, data jsonb NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "downtime_categories": "id smallint GENERATED ALWAYS AS IDENTITY, code text NOT NULL, name text NOT NULL, loss_type text NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "operators": "id uuid DEFAULT gen_random_uuid() NOT NULL, employee_code text, full_name text NOT NULL, job_title text DEFAULT 'MC Operator'::text NOT NULL, profile_id uuid, status text DEFAULT 'active'::text NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "operator_skill_grades": "id uuid DEFAULT gen_random_uuid() NOT NULL, operator_id uuid NOT NULL, machine_id uuid NOT NULL, grade_type text NOT NULL, grade smallint NOT NULL, assessed_by uuid, assessed_at timestamp with time zone DEFAULT now() NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "operator_deviations": "id uuid DEFAULT gen_random_uuid() NOT NULL, operator_id uuid NOT NULL, machine_id uuid, deviation_date date NOT NULL, description text NOT NULL, severity text NOT NULL, corrective_action text, recorded_by uuid, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "operator_development_plans": "id uuid DEFAULT gen_random_uuid() NOT NULL, operator_id uuid NOT NULL, goal text NOT NULL, development_action text NOT NULL, plan_type text NOT NULL, target_date date, status text DEFAULT 'open'::text NOT NULL, created_by uuid, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "supervisor_assessments": "id uuid DEFAULT gen_random_uuid() NOT NULL, operator_id uuid NOT NULL, assessed_by uuid, assessment_date date DEFAULT CURRENT_DATE NOT NULL, points numeric(6,2) NOT NULL, notes text, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "machine_daily_oee": "id uuid DEFAULT gen_random_uuid() NOT NULL, machine_id uuid NOT NULL, production_date date NOT NULL, validation_min numeric(10,2), tl_min numeric(10,2), loss_time_min numeric(10,2), wt_min numeric(10,2), runtime_min numeric(10,2), oee_pct numeric(6,4), total_available_time_min numeric(10,2), utilization_pct numeric(6,4), speed_loss_time_min numeric(10,2), oee_with_speed_loss_pct numeric(6,4), setup_time_min numeric(10,2), breaktime_min numeric(10,2), sqdce numeric(10,2), source_workbook text DEFAULT 'Prod. Data Summary'::text NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "machine_daily_downtime_events": "id uuid DEFAULT gen_random_uuid() NOT NULL, machine_daily_oee_id uuid NOT NULL, downtime_category_id smallint NOT NULL, duration_min numeric(10,2) NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "production_runs": "id uuid DEFAULT gen_random_uuid() NOT NULL, production_date date NOT NULL, machine_id uuid NOT NULL, area text NOT NULL, process_label text NOT NULL, process_type_id smallint, mr_number text, size text, shape text, runtime_min numeric(10,2), standard_linespeed numeric(12,4), output_target numeric(14,3), actual_output numeric(14,3), output_loss numeric(14,3), speed_loss_pct numeric(6,4), std_work_hours numeric(10,2), comments text, source_ref text, created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "materials": "id smallint GENERATED ALWAYS AS IDENTITY, code text NOT NULL, name text NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "scrap_events": "id uuid DEFAULT gen_random_uuid() NOT NULL, production_date date NOT NULL, machine_id uuid, material_id smallint, reason text, quantity_kg numeric(14,3) NOT NULL, source_sheet text NOT NULL, source_ref text, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "daily_scrap_summary": "id uuid DEFAULT gen_random_uuid() NOT NULL, production_date date NOT NULL, daily_scrap numeric(14,3), cumulative_scrap numeric(14,3), daily_output numeric(14,3), cumulative_output numeric(14,3), scrap_pct numeric(8,6), cumulative_scrap_pct numeric(8,6), target_pct numeric(8,6), created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "cu_al_tonnage_daily": "id uuid DEFAULT gen_random_uuid() NOT NULL, production_date date NOT NULL, category text NOT NULL, tonnage numeric(14,3) NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "monthly_tonnage_targets": "id uuid DEFAULT gen_random_uuid() NOT NULL, month_label text NOT NULL, cu_tonnage_actual numeric(14,3), os_tonnage_actual numeric(14,3), target_cu numeric(14,3), target_os numeric(14,3), al_tonnage_actual numeric(14,3), target_al numeric(14,3), created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "rework_events": "id uuid DEFAULT gen_random_uuid() NOT NULL, rework_date date NOT NULL, machine_id uuid, process_label text, mr_number text, size text, repair_time_min numeric(10,2), source_machine_id uuid, scrap_kg numeric(14,3), reason text, source_ref text, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "change_types": "id smallint GENERATED ALWAYS AS IDENTITY, code text NOT NULL, name text NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "bleed_scrap_daily": "id uuid DEFAULT gen_random_uuid() NOT NULL, event_date date NOT NULL, machine_id uuid NOT NULL, process_label text, material_id smallint, total_scrap_kg numeric(14,3), target_kg numeric(14,3), overall_scrap_kg numeric(14,3), source_ref text, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "bleed_scrap_reason_events": "id uuid DEFAULT gen_random_uuid() NOT NULL, bleed_scrap_daily_id uuid NOT NULL, change_type_id smallint NOT NULL, scrap_kg numeric(14,3) DEFAULT 0, change_count integer DEFAULT 0",
+    "leftovers_backup_20260803": "id text NOT NULL, data jsonb, updated_at timestamp with time zone, backed_up_at timestamp with time zone DEFAULT now()",
+    "machine_handbook": "id text NOT NULL, data jsonb NOT NULL, updated_at timestamp with time zone DEFAULT now()",
+    "mc_runs": "id bigint DEFAULT nextval('mc_runs_id_seq'::regclass) NOT NULL, item_id bigint NOT NULL, sheet_ref text, line text DEFAULT 'ST2'::text, started_at timestamp with time zone NOT NULL, stopped_at timestamp with time zone, phys_wip_open numeric(14,3) NOT NULL, phys_wip_close numeric(14,3), wip_on_hold numeric(14,3) DEFAULT 0 NOT NULL, rm_withdrawn numeric(14,3) DEFAULT 0 NOT NULL, scrap_kg numeric(14,3), nav_wip_open numeric(14,3), nav_wip_close numeric(14,3), nav_posted_kg numeric(14,3), notes text, data_quality_note text, created_by uuid DEFAULT auth.uid(), created_at timestamp with time zone DEFAULT now() NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL, record_type text DEFAULT 'run'::text NOT NULL, machine text, cores smallint, scrap_start_m numeric(12,2), scrap_joint_m numeric(12,2), scrap_stop_m numeric(12,2), good_metres numeric(14,2), times_recorded boolean DEFAULT true NOT NULL, input_expr jsonb",
+    "mc_thickness": "id bigint DEFAULT nextval('mc_thickness_id_seq'::regclass) NOT NULL, run_id bigint NOT NULL, seq integer NOT NULL, \"position\" text NOT NULL, thk_min numeric(6,3), thk_ave numeric(6,3), thk_max numeric(6,3)",
+    "mc_nav_snapshots": "id bigint DEFAULT nextval('mc_nav_snapshots_id_seq'::regclass) NOT NULL, item_id bigint NOT NULL, captured_at timestamp with time zone NOT NULL, qty_rm numeric(14,3), qty_wip numeric(14,3), qty_fg numeric(14,3), note text, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "mc_model": "id bigint DEFAULT nextval('mc_model_id_seq'::regclass) NOT NULL, item_id bigint NOT NULL, product_size text, fixed_loss_kg numeric(12,3) DEFAULT 0 NOT NULL, variable_uplift_pct numeric(8,4) DEFAULT 0 NOT NULL, expected_scrap_pct numeric(8,4) DEFAULT 0 NOT NULL, tolerance_pct numeric(8,4) DEFAULT 3 NOT NULL, effective_from date DEFAULT CURRENT_DATE NOT NULL, note text, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "mc_items": "id bigint DEFAULT nextval('mc_items_id_seq'::regclass) NOT NULL, item_no text NOT NULL, description text NOT NULL, uom text DEFAULT 'KG'::text NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, kind text DEFAULT 'compound'::text NOT NULL, density_g_cm3 numeric(6,3), unit_cost numeric(12,4), currency text DEFAULT 'QAR'::text, system_wip_qty numeric(14,3), system_wip_at date, prev_wip_qty numeric(14,3), prev_wip_at date, wip_note text",
+    "mc_products": "id bigint DEFAULT nextval('mc_products_id_seq'::regclass) NOT NULL, size text NOT NULL, item_id bigint NOT NULL, bom_kg_per_km numeric(12,3) NOT NULL, std_thk_min numeric(6,3), std_thk_nom numeric(6,3), std_thk_max numeric(6,3), active boolean DEFAULT true NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, dia_under_sheath_mm numeric(8,2), density_g_cm3 numeric(6,3), spec_type text DEFAULT 'two_sided'::text NOT NULL",
+    "mc_run_items": "id bigint DEFAULT nextval('mc_run_items_id_seq'::regclass) NOT NULL, run_id bigint NOT NULL, product_id bigint, size text NOT NULL, mr_numbers text, bom_kg_per_km numeric(12,3) NOT NULL, metres numeric(14,2) NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, machine text, operation_no text",
+    "mc_nav_ledger": "id bigint DEFAULT nextval('mc_nav_ledger_id_seq'::regclass) NOT NULL, item_id bigint NOT NULL, entry_no bigint, posting_date date NOT NULL, document_no text, entry_type text, location_code text, order_no text, quantity numeric(14,3) NOT NULL, created_at timestamp with time zone DEFAULT now() NOT NULL, finished_date date, posted_date date, document_type text, source_no text, lot_no text, operation_no text, scrap_qty numeric(14,3), cost_amount numeric(16,4), run_id bigint, batch_id text",
+    "mc_run_materials": "id bigint DEFAULT nextval('mc_run_materials_id_seq'::regclass) NOT NULL, run_id bigint NOT NULL, item_id bigint, label text NOT NULL, opening_kg numeric(14,3), withdrawn_kg numeric(14,3) DEFAULT 0 NOT NULL, closing_kg numeric(14,3), bom_g_per_m numeric(12,3), metres numeric(14,2), expected_kg numeric(14,3), note text, created_at timestamp with time zone DEFAULT now() NOT NULL",
+    "setup_routing": "id text NOT NULL, data jsonb DEFAULT '{}'::jsonb NOT NULL, updated_at timestamp with time zone DEFAULT now() NOT NULL",
+    "ds_cables": "cable_code text NOT NULL, cores integer NOT NULL, conductor_size integer NOT NULL, description text, standard text, voltage_u0 numeric, voltage_u numeric, voltage_um numeric, cable_weight numeric, overall_diameter numeric, resistance numeric, drum_size text, drum_length numeric, marking text, document_no text, source_file text, created_at timestamp with time zone DEFAULT now()",
+    "ds_stages": "id bigint GENERATED ALWAYS AS IDENTITY, cable_code text NOT NULL, stage_order integer NOT NULL, stage_name text NOT NULL, material_type text, material_code text, material_density numeric, thickness_min numeric, thickness_nom numeric, thickness_target numeric, outer_diameter numeric, outer_diameter2 numeric, color text, weight_kg_km numeric, spark_test_kv numeric, extra jsonb DEFAULT '{}'::jsonb",
+    "ds_conductors": "id bigint GENERATED ALWAYS AS IDENTITY, cable_code text NOT NULL, conductor_material text, conductor_type text, wire_diameter_min numeric, wire_diameter_nom numeric, wire_diameter_max numeric, no_of_wires integer, conductor_shape text, conductor_dim1 numeric, conductor_dim2 numeric, lay_details jsonb DEFAULT '[]'::jsonb, resistance_max numeric",
+    "ds_bom": "id bigint GENERATED ALWAYS AS IDENTITY, cable_code text NOT NULL, stage_name text NOT NULL, material_desc text NOT NULL, material_code text, material_density numeric, quantity_desc text, weight_kg_km numeric, master_batch text"
+  },
+  "constraints": [
+    {
+      "table_name": "armours",
+      "conname": "armours_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "bleed_scrap_daily",
+      "conname": "bleed_scrap_daily_machine_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (machine_id) REFERENCES machines(id)"
+    },
+    {
+      "table_name": "bleed_scrap_daily",
+      "conname": "bleed_scrap_daily_material_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (material_id) REFERENCES materials(id)"
+    },
+    {
+      "table_name": "bleed_scrap_daily",
+      "conname": "bleed_scrap_daily_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "bleed_scrap_daily",
+      "conname": "bleed_scrap_daily_source_ref_key",
+      "contype": "u",
+      "def": "UNIQUE (source_ref)"
+    },
+    {
+      "table_name": "bleed_scrap_reason_events",
+      "conname": "bleed_scrap_reason_events_bleed_scrap_daily_id_change_type__key",
+      "contype": "u",
+      "def": "UNIQUE (bleed_scrap_daily_id, change_type_id)"
+    },
+    {
+      "table_name": "bleed_scrap_reason_events",
+      "conname": "bleed_scrap_reason_events_bleed_scrap_daily_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (bleed_scrap_daily_id) REFERENCES bleed_scrap_daily(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "bleed_scrap_reason_events",
+      "conname": "bleed_scrap_reason_events_change_type_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (change_type_id) REFERENCES change_types(id)"
+    },
+    {
+      "table_name": "bleed_scrap_reason_events",
+      "conname": "bleed_scrap_reason_events_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "change_types",
+      "conname": "change_types_code_key",
+      "contype": "u",
+      "def": "UNIQUE (code)"
+    },
+    {
+      "table_name": "change_types",
+      "conname": "change_types_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "coils",
+      "conname": "coils_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "cu_al_tonnage_daily",
+      "conname": "cu_al_tonnage_daily_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "cu_al_tonnage_daily",
+      "conname": "cu_al_tonnage_daily_production_date_category_key",
+      "contype": "u",
+      "def": "UNIQUE (production_date, category)"
+    },
+    {
+      "table_name": "daily_scrap_summary",
+      "conname": "daily_scrap_summary_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "daily_scrap_summary",
+      "conname": "daily_scrap_summary_production_date_key",
+      "contype": "u",
+      "def": "UNIQUE (production_date)"
+    },
+    {
+      "table_name": "downtime_categories",
+      "conname": "downtime_categories_code_key",
+      "contype": "u",
+      "def": "UNIQUE (code)"
+    },
+    {
+      "table_name": "downtime_categories",
+      "conname": "downtime_categories_loss_type_check",
+      "contype": "c",
+      "def": "CHECK ((loss_type = ANY (ARRAY['availability'::text, 'performance'::text, 'quality'::text])))"
+    },
+    {
+      "table_name": "downtime_categories",
+      "conname": "downtime_categories_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "draws",
+      "conname": "draws_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "ds_bom",
+      "conname": "ds_bom_cable_code_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (cable_code) REFERENCES ds_cables(cable_code) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "ds_bom",
+      "conname": "ds_bom_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "ds_cables",
+      "conname": "ds_cables_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (cable_code)"
+    },
+    {
+      "table_name": "ds_conductors",
+      "conname": "ds_conductors_cable_code_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (cable_code) REFERENCES ds_cables(cable_code) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "ds_conductors",
+      "conname": "ds_conductors_cable_code_key",
+      "contype": "u",
+      "def": "UNIQUE (cable_code)"
+    },
+    {
+      "table_name": "ds_conductors",
+      "conname": "ds_conductors_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "ds_stages",
+      "conname": "ds_stages_cable_code_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (cable_code) REFERENCES ds_cables(cable_code) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "ds_stages",
+      "conname": "ds_stages_cable_code_stage_order_key",
+      "contype": "u",
+      "def": "UNIQUE (cable_code, stage_order)"
+    },
+    {
+      "table_name": "ds_stages",
+      "conname": "ds_stages_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "job_order_audit_log",
+      "conname": "job_order_audit_log_changed_by_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (changed_by) REFERENCES profiles(id)"
+    },
+    {
+      "table_name": "job_order_audit_log",
+      "conname": "job_order_audit_log_job_order_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (job_order_id) REFERENCES job_orders(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "job_order_audit_log",
+      "conname": "job_order_audit_log_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "job_order_process_steps",
+      "conname": "job_order_process_steps_job_order_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (job_order_id) REFERENCES job_orders(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "job_order_process_steps",
+      "conname": "job_order_process_steps_job_order_id_sequence_no_key",
+      "contype": "u",
+      "def": "UNIQUE (job_order_id, sequence_no)"
+    },
+    {
+      "table_name": "job_order_process_steps",
+      "conname": "job_order_process_steps_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "job_order_process_steps",
+      "conname": "job_order_process_steps_planned_machine_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (planned_machine_id) REFERENCES machines(id)"
+    },
+    {
+      "table_name": "job_order_process_steps",
+      "conname": "job_order_process_steps_process_type_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (process_type_id) REFERENCES process_types(id)"
+    },
+    {
+      "table_name": "job_order_process_steps",
+      "conname": "job_order_process_steps_status_check",
+      "contype": "c",
+      "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'in_progress'::text, 'completed'::text, 'skipped'::text])))"
+    },
+    {
+      "table_name": "job_orders",
+      "conname": "job_orders_created_by_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (created_by) REFERENCES profiles(id)"
+    },
+    {
+      "table_name": "job_orders",
+      "conname": "job_orders_job_order_no_key",
+      "contype": "u",
+      "def": "UNIQUE (job_order_no)"
+    },
+    {
+      "table_name": "job_orders",
+      "conname": "job_orders_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "job_orders",
+      "conname": "job_orders_priority_check",
+      "contype": "c",
+      "def": "CHECK (((priority >= 1) AND (priority <= 5)))"
+    },
+    {
+      "table_name": "job_orders",
+      "conname": "job_orders_quantity_ordered_check",
+      "contype": "c",
+      "def": "CHECK ((quantity_ordered > (0)::numeric))"
+    },
+    {
+      "table_name": "job_orders",
+      "conname": "job_orders_released_by_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (released_by) REFERENCES profiles(id)"
+    },
+    {
+      "table_name": "job_orders",
+      "conname": "job_orders_status_check",
+      "contype": "c",
+      "def": "CHECK ((status = ANY (ARRAY['draft'::text, 'released'::text, 'in_progress'::text, 'completed'::text, 'closed'::text, 'cancelled'::text])))"
+    },
+    {
+      "table_name": "leftovers",
+      "conname": "leftovers_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "leftovers_backup_20260803",
+      "conname": "leftovers_backup_20260803_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "machine_daily_downtime_events",
+      "conname": "machine_daily_downtime_events_downtime_category_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (downtime_category_id) REFERENCES downtime_categories(id)"
+    },
+    {
+      "table_name": "machine_daily_downtime_events",
+      "conname": "machine_daily_downtime_events_duration_min_check",
+      "contype": "c",
+      "def": "CHECK ((duration_min >= (0)::numeric))"
+    },
+    {
+      "table_name": "machine_daily_downtime_events",
+      "conname": "machine_daily_downtime_events_machine_daily_oee_id_downtime_key",
+      "contype": "u",
+      "def": "UNIQUE (machine_daily_oee_id, downtime_category_id)"
+    },
+    {
+      "table_name": "machine_daily_downtime_events",
+      "conname": "machine_daily_downtime_events_machine_daily_oee_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (machine_daily_oee_id) REFERENCES machine_daily_oee(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "machine_daily_downtime_events",
+      "conname": "machine_daily_downtime_events_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "machine_daily_oee",
+      "conname": "machine_daily_oee_machine_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (machine_id) REFERENCES machines(id)"
+    },
+    {
+      "table_name": "machine_daily_oee",
+      "conname": "machine_daily_oee_machine_id_production_date_key",
+      "contype": "u",
+      "def": "UNIQUE (machine_id, production_date)"
+    },
+    {
+      "table_name": "machine_daily_oee",
+      "conname": "machine_daily_oee_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "machine_handbook",
+      "conname": "machine_handbook_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "machines",
+      "conname": "machines_code_key",
+      "contype": "u",
+      "def": "UNIQUE (code)"
+    },
+    {
+      "table_name": "machines",
+      "conname": "machines_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "machines",
+      "conname": "machines_process_type_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (process_type_id) REFERENCES process_types(id)"
+    },
+    {
+      "table_name": "machines",
+      "conname": "machines_status_check",
+      "contype": "c",
+      "def": "CHECK ((status = ANY (ARRAY['active'::text, 'inactive'::text, 'maintenance'::text])))"
+    },
+    {
+      "table_name": "materials",
+      "conname": "materials_code_key",
+      "contype": "u",
+      "def": "UNIQUE (code)"
+    },
+    {
+      "table_name": "materials",
+      "conname": "materials_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mc_items",
+      "conname": "mc_items_item_no_key",
+      "contype": "u",
+      "def": "UNIQUE (item_no)"
+    },
+    {
+      "table_name": "mc_items",
+      "conname": "mc_items_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mc_model",
+      "conname": "mc_model_item_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (item_id) REFERENCES mc_items(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "mc_model",
+      "conname": "mc_model_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mc_nav_ledger",
+      "conname": "mc_nav_ledger_item_id_entry_no_key",
+      "contype": "u",
+      "def": "UNIQUE (item_id, entry_no)"
+    },
+    {
+      "table_name": "mc_nav_ledger",
+      "conname": "mc_nav_ledger_item_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (item_id) REFERENCES mc_items(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "mc_nav_ledger",
+      "conname": "mc_nav_ledger_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mc_nav_ledger",
+      "conname": "mc_nav_ledger_run_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (run_id) REFERENCES mc_runs(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "mc_nav_snapshots",
+      "conname": "mc_nav_snapshots_item_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (item_id) REFERENCES mc_items(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "mc_nav_snapshots",
+      "conname": "mc_nav_snapshots_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mc_products",
+      "conname": "mc_products_item_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (item_id) REFERENCES mc_items(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "mc_products",
+      "conname": "mc_products_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mc_products",
+      "conname": "mc_products_size_item_id_key",
+      "contype": "u",
+      "def": "UNIQUE (size, item_id)"
+    },
+    {
+      "table_name": "mc_run_items",
+      "conname": "mc_run_items_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mc_run_items",
+      "conname": "mc_run_items_product_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (product_id) REFERENCES mc_products(id)"
+    },
+    {
+      "table_name": "mc_run_items",
+      "conname": "mc_run_items_run_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (run_id) REFERENCES mc_runs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "mc_run_materials",
+      "conname": "mc_run_materials_item_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (item_id) REFERENCES mc_items(id)"
+    },
+    {
+      "table_name": "mc_run_materials",
+      "conname": "mc_run_materials_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mc_run_materials",
+      "conname": "mc_run_materials_run_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (run_id) REFERENCES mc_runs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "mc_runs",
+      "conname": "mc_runs_created_by_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (created_by) REFERENCES auth.users(id)"
+    },
+    {
+      "table_name": "mc_runs",
+      "conname": "mc_runs_item_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (item_id) REFERENCES mc_items(id)"
+    },
+    {
+      "table_name": "mc_runs",
+      "conname": "mc_runs_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mc_thickness",
+      "conname": "mc_thickness_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mc_thickness",
+      "conname": "mc_thickness_position_check",
+      "contype": "c",
+      "def": "CHECK ((\"position\" = ANY (ARRAY['START'::text, 'END'::text])))"
+    },
+    {
+      "table_name": "mc_thickness",
+      "conname": "mc_thickness_run_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (run_id) REFERENCES mc_runs(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "monthly_tonnage_targets",
+      "conname": "monthly_tonnage_targets_month_label_key",
+      "contype": "u",
+      "def": "UNIQUE (month_label)"
+    },
+    {
+      "table_name": "monthly_tonnage_targets",
+      "conname": "monthly_tonnage_targets_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "mroverrides",
+      "conname": "mroverrides_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "operator_development_plans",
+      "conname": "operator_development_plans_created_by_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (created_by) REFERENCES profiles(id)"
+    },
+    {
+      "table_name": "operator_development_plans",
+      "conname": "operator_development_plans_operator_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (operator_id) REFERENCES operators(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "operator_development_plans",
+      "conname": "operator_development_plans_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "operator_development_plans",
+      "conname": "operator_development_plans_plan_type_check",
+      "contype": "c",
+      "def": "CHECK ((plan_type = ANY (ARRAY['Machine skill'::text, 'Safety'::text, 'Quality'::text, 'Process'::text, 'Behaviour'::text, 'Cross-training'::text])))"
+    },
+    {
+      "table_name": "operator_development_plans",
+      "conname": "operator_development_plans_status_check",
+      "contype": "c",
+      "def": "CHECK ((status = ANY (ARRAY['open'::text, 'in_progress'::text, 'completed'::text, 'cancelled'::text])))"
+    },
+    {
+      "table_name": "operator_deviations",
+      "conname": "operator_deviations_machine_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (machine_id) REFERENCES machines(id)"
+    },
+    {
+      "table_name": "operator_deviations",
+      "conname": "operator_deviations_operator_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (operator_id) REFERENCES operators(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "operator_deviations",
+      "conname": "operator_deviations_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "operator_deviations",
+      "conname": "operator_deviations_recorded_by_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (recorded_by) REFERENCES profiles(id)"
+    },
+    {
+      "table_name": "operator_deviations",
+      "conname": "operator_deviations_severity_check",
+      "contype": "c",
+      "def": "CHECK ((severity = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'critical'::text])))"
+    },
+    {
+      "table_name": "operator_skill_grades",
+      "conname": "operator_skill_grades_assessed_by_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (assessed_by) REFERENCES profiles(id)"
+    },
+    {
+      "table_name": "operator_skill_grades",
+      "conname": "operator_skill_grades_grade_check",
+      "contype": "c",
+      "def": "CHECK (((grade >= 0) AND (grade <= 4)))"
+    },
+    {
+      "table_name": "operator_skill_grades",
+      "conname": "operator_skill_grades_grade_type_check",
+      "contype": "c",
+      "def": "CHECK ((grade_type = ANY (ARRAY['setup'::text, 'operating'::text])))"
+    },
+    {
+      "table_name": "operator_skill_grades",
+      "conname": "operator_skill_grades_machine_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (machine_id) REFERENCES machines(id)"
+    },
+    {
+      "table_name": "operator_skill_grades",
+      "conname": "operator_skill_grades_operator_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (operator_id) REFERENCES operators(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "operator_skill_grades",
+      "conname": "operator_skill_grades_operator_id_machine_id_grade_type_key",
+      "contype": "u",
+      "def": "UNIQUE (operator_id, machine_id, grade_type)"
+    },
+    {
+      "table_name": "operator_skill_grades",
+      "conname": "operator_skill_grades_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "operators",
+      "conname": "operators_employee_code_key",
+      "contype": "u",
+      "def": "UNIQUE (employee_code)"
+    },
+    {
+      "table_name": "operators",
+      "conname": "operators_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "operators",
+      "conname": "operators_profile_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (profile_id) REFERENCES profiles(id)"
+    },
+    {
+      "table_name": "operators",
+      "conname": "operators_status_check",
+      "contype": "c",
+      "def": "CHECK ((status = ANY (ARRAY['active'::text, 'inactive'::text])))"
+    },
+    {
+      "table_name": "process_types",
+      "conname": "process_types_code_key",
+      "contype": "u",
+      "def": "UNIQUE (code)"
+    },
+    {
+      "table_name": "process_types",
+      "conname": "process_types_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "prodlogs",
+      "conname": "prodlogs_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "production_runs",
+      "conname": "production_runs_area_check",
+      "contype": "c",
+      "def": "CHECK ((area = ANY (ARRAY['Assembly'::text, 'Metallurgy'::text, 'Extrusion'::text, 'Coiling'::text, 'Other'::text])))"
+    },
+    {
+      "table_name": "production_runs",
+      "conname": "production_runs_machine_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (machine_id) REFERENCES machines(id)"
+    },
+    {
+      "table_name": "production_runs",
+      "conname": "production_runs_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "production_runs",
+      "conname": "production_runs_process_type_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (process_type_id) REFERENCES process_types(id)"
+    },
+    {
+      "table_name": "production_runs",
+      "conname": "production_runs_source_ref_key",
+      "contype": "u",
+      "def": "UNIQUE (source_ref)"
+    },
+    {
+      "table_name": "profiles",
+      "conname": "profiles_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "profiles",
+      "conname": "profiles_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "profiles",
+      "conname": "profiles_role_check",
+      "contype": "c",
+      "def": "CHECK ((role = ANY (ARRAY['viewer'::text, 'editor'::text])))"
+    },
+    {
+      "table_name": "rework_events",
+      "conname": "rework_events_machine_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (machine_id) REFERENCES machines(id)"
+    },
+    {
+      "table_name": "rework_events",
+      "conname": "rework_events_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "rework_events",
+      "conname": "rework_events_source_machine_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (source_machine_id) REFERENCES machines(id)"
+    },
+    {
+      "table_name": "rework_events",
+      "conname": "rework_events_source_ref_key",
+      "contype": "u",
+      "def": "UNIQUE (source_ref)"
+    },
+    {
+      "table_name": "scrap_events",
+      "conname": "scrap_events_machine_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (machine_id) REFERENCES machines(id)"
+    },
+    {
+      "table_name": "scrap_events",
+      "conname": "scrap_events_material_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (material_id) REFERENCES materials(id)"
+    },
+    {
+      "table_name": "scrap_events",
+      "conname": "scrap_events_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "scrap_events",
+      "conname": "scrap_events_quantity_kg_check",
+      "contype": "c",
+      "def": "CHECK ((quantity_kg >= (0)::numeric))"
+    },
+    {
+      "table_name": "scrap_events",
+      "conname": "scrap_events_source_ref_key",
+      "contype": "u",
+      "def": "UNIQUE (source_ref)"
+    },
+    {
+      "table_name": "scrap_events",
+      "conname": "scrap_events_source_sheet_check",
+      "contype": "c",
+      "def": "CHECK ((source_sheet = ANY (ARRAY['scrap_tb'::text, 'REASON'::text])))"
+    },
+    {
+      "table_name": "settings",
+      "conname": "settings_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (key)"
+    },
+    {
+      "table_name": "setup_routing",
+      "conname": "setup_routing_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "shifts",
+      "conname": "shifts_code_key",
+      "contype": "u",
+      "def": "UNIQUE (code)"
+    },
+    {
+      "table_name": "shifts",
+      "conname": "shifts_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "strands",
+      "conname": "strands_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "suite_apps",
+      "conname": "suite_apps_color_valid",
+      "contype": "c",
+      "def": "CHECK ((color = ANY (ARRAY['red'::text, 'amber'::text, 'blue'::text, 'teal'::text, 'green'::text])))"
+    },
+    {
+      "table_name": "suite_apps",
+      "conname": "suite_apps_name_not_blank",
+      "contype": "c",
+      "def": "CHECK ((length(TRIM(BOTH FROM name)) > 0))"
+    },
+    {
+      "table_name": "suite_apps",
+      "conname": "suite_apps_name_unique",
+      "contype": "u",
+      "def": "UNIQUE (name)"
+    },
+    {
+      "table_name": "suite_apps",
+      "conname": "suite_apps_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "suite_apps",
+      "conname": "suite_apps_url_not_blank",
+      "contype": "c",
+      "def": "CHECK ((length(TRIM(BOTH FROM url)) > 0))"
+    },
+    {
+      "table_name": "supervisor_assessments",
+      "conname": "supervisor_assessments_assessed_by_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (assessed_by) REFERENCES profiles(id)"
+    },
+    {
+      "table_name": "supervisor_assessments",
+      "conname": "supervisor_assessments_operator_id_fkey",
+      "contype": "f",
+      "def": "FOREIGN KEY (operator_id) REFERENCES operators(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "supervisor_assessments",
+      "conname": "supervisor_assessments_pkey",
+      "contype": "p",
+      "def": "PRIMARY KEY (id)"
+    }
+  ],
+  "indexes": [
+    "CREATE INDEX idx_bleeddaily_date ON public.bleed_scrap_daily USING btree (event_date)",
+    "CREATE INDEX idx_bleeddaily_machine ON public.bleed_scrap_daily USING btree (machine_id)",
+    "CREATE INDEX idx_bleedreason_daily ON public.bleed_scrap_reason_events USING btree (bleed_scrap_daily_id)",
+    "CREATE INDEX idx_deviation_date ON public.operator_deviations USING btree (deviation_date)",
+    "CREATE INDEX idx_deviation_operator ON public.operator_deviations USING btree (operator_id)",
+    "CREATE INDEX idx_devplan_operator ON public.operator_development_plans USING btree (operator_id)",
+    "CREATE INDEX idx_devplan_status ON public.operator_development_plans USING btree (status)",
+    "CREATE INDEX idx_ds_bom_cable ON public.ds_bom USING btree (cable_code)",
+    "CREATE INDEX idx_ds_cables_cores_size ON public.ds_cables USING btree (cores, conductor_size)",
+    "CREATE INDEX idx_ds_cables_standard ON public.ds_cables USING btree (standard)",
+    "CREATE INDEX idx_ds_conductors_cable ON public.ds_conductors USING btree (cable_code)",
+    "CREATE INDEX idx_ds_stages_cable ON public.ds_stages USING btree (cable_code)",
+    "CREATE INDEX idx_ds_stages_name ON public.ds_stages USING btree (stage_name)",
+    "CREATE INDEX idx_joal_job_order ON public.job_order_audit_log USING btree (job_order_id)",
+    "CREATE INDEX idx_job_orders_created_at ON public.job_orders USING btree (created_at)",
+    "CREATE INDEX idx_job_orders_status ON public.job_orders USING btree (status)",
+    "CREATE INDEX idx_jops_job_order ON public.job_order_process_steps USING btree (job_order_id)",
+    "CREATE INDEX idx_jops_process_type ON public.job_order_process_steps USING btree (process_type_id)",
+    "CREATE INDEX idx_machines_process_type ON public.machines USING btree (process_type_id)",
+    "CREATE INDEX idx_mddowntime_oee ON public.machine_daily_downtime_events USING btree (machine_daily_oee_id)",
+    "CREATE INDEX idx_mdoee_date ON public.machine_daily_oee USING btree (production_date)",
+    "CREATE INDEX idx_mdoee_machine ON public.machine_daily_oee USING btree (machine_id)",
+    "CREATE INDEX idx_operators_profile ON public.operators USING btree (profile_id)",
+    "CREATE INDEX idx_operators_status ON public.operators USING btree (status)",
+    "CREATE INDEX idx_osg_machine ON public.operator_skill_grades USING btree (machine_id)",
+    "CREATE INDEX idx_osg_operator ON public.operator_skill_grades USING btree (operator_id)",
+    "CREATE INDEX idx_prodruns_area ON public.production_runs USING btree (area)",
+    "CREATE INDEX idx_prodruns_date ON public.production_runs USING btree (production_date)",
+    "CREATE INDEX idx_prodruns_machine ON public.production_runs USING btree (machine_id)",
+    "CREATE INDEX idx_prodruns_mr ON public.production_runs USING btree (mr_number)",
+    "CREATE INDEX idx_rework_date ON public.rework_events USING btree (rework_date)",
+    "CREATE INDEX idx_rework_machine ON public.rework_events USING btree (machine_id)",
+    "CREATE INDEX idx_scrap_date ON public.scrap_events USING btree (production_date)",
+    "CREATE INDEX idx_scrap_machine ON public.scrap_events USING btree (machine_id)",
+    "CREATE INDEX idx_scrap_material ON public.scrap_events USING btree (material_id)",
+    "CREATE INDEX idx_suite_apps_active_order ON public.suite_apps USING btree (is_active, sort_order, created_at)",
+    "CREATE INDEX idx_supassess_date ON public.supervisor_assessments USING btree (assessment_date)",
+    "CREATE INDEX idx_supassess_operator ON public.supervisor_assessments USING btree (operator_id)",
+    "CREATE INDEX idx_tonnage_date ON public.cu_al_tonnage_daily USING btree (production_date)",
+    "CREATE INDEX mc_nav_ledger_date_idx ON public.mc_nav_ledger USING btree (item_id, posting_date)",
+    "CREATE INDEX mc_nav_ledger_doc_idx ON public.mc_nav_ledger USING btree (item_id, document_no)",
+    "CREATE INDEX mc_nav_ledger_posting_idx ON public.mc_nav_ledger USING btree (item_id, posting_date, entry_no)",
+    "CREATE INDEX mc_nav_ledger_run_idx ON public.mc_nav_ledger USING btree (run_id)",
+    "CREATE INDEX mc_run_items_run_idx ON public.mc_run_items USING btree (run_id)",
+    "CREATE INDEX mc_run_materials_run_idx ON public.mc_run_materials USING btree (run_id)",
+    "CREATE INDEX mc_runs_line_idx ON public.mc_runs USING btree (line, started_at)",
+    "CREATE INDEX mc_runs_started_idx ON public.mc_runs USING btree (item_id, started_at)",
+    "CREATE INDEX mc_thickness_run_idx ON public.mc_thickness USING btree (run_id)"
+  ]
+}

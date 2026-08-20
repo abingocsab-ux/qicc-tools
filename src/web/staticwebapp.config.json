@@ -1,0 +1,15 @@
+{
+  "routes": [
+    { "route": "/dashboard", "rewrite": "/dashboard/index.html" },
+    { "route": "/traceability", "rewrite": "/traceability/index.html" },
+    { "route": "/trials", "rewrite": "/trials/index.html" },
+    { "route": "/material-consumption", "rewrite": "/material-consumption/index.html" },
+    { "route": "/skill-matrix", "rewrite": "/skill-matrix/index.html" },
+    { "route": "/setup-scrap", "rewrite": "/setup-scrap/index.html" },
+    { "route": "/ccv", "rewrite": "/ccv/index.html" }
+  ],
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin"
+  }
+}
