@@ -3,16 +3,27 @@
   window.__qiccGate = true;
 
   var TOKEN_KEY = "qicc_gate_token";
+  var SESSION_KEY = "qicc_gate_ok";
 
   function currentToken() {
     try { return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || ""; }
     catch (e) { return ""; }
   }
 
+  function sessionUnlocked() {
+    try { return sessionStorage.getItem(SESSION_KEY) === "1"; }
+    catch (e) { return false; }
+  }
+
+  function markSessionUnlocked() {
+    try { sessionStorage.setItem(SESSION_KEY, "1"); } catch (e) {}
+  }
+
   function saveToken(token) {
     if (!token) return;
     try { localStorage.setItem(TOKEN_KEY, token); } catch (e) {}
     try { sessionStorage.setItem(TOKEN_KEY, token); } catch (e) {}
+    markSessionUnlocked();
   }
 
   function isApiRequest(input) {
@@ -83,6 +94,7 @@
   }
 
   function showPrompt() {
+    if (document.getElementById("qicc-gate")) return;
     var wrap = document.createElement("div");
     wrap.id = "qicc-gate";
     wrap.innerHTML =
@@ -116,6 +128,7 @@
         return r.json();
       }).then(function (data) {
         if (data && data.token) saveToken(data.token);
+        else markSessionUnlocked();
         window.location.reload();
       }).catch(function () {
         err.textContent = "Wrong PIN.";
@@ -130,11 +143,21 @@
 
   function start() {
     var inFrame = window !== window.top;
-    checkGate().then(function (ok) {
-      if (ok) { unlockUi(); return; }
-      if (inFrame) waitForParent();
-      else showPrompt();
-    });
+    if (inFrame) {
+      checkGate().then(function (ok) {
+        if (ok) { unlockUi(); return; }
+        waitForParent();
+      });
+      return;
+    }
+    if (sessionUnlocked()) {
+      checkGate().then(function (ok) {
+        if (ok) unlockUi();
+        else showPrompt();
+      });
+      return;
+    }
+    showPrompt();
   }
 
   if (document.readyState === "loading") {

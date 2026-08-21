@@ -2,18 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<script src="/gate.js"></script>
+<script src="/gate.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Production Skill Matrix 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<!-- Firebase (Firestore) — enables safe multi-user concurrent editing.
-     The SDK + project config load automatically from Firebase Hosting's
-     reserved /__/firebase/ URLs (only present when this file is deployed on
-     Firebase Hosting) — see initFirebase() in the main script. No manual
-     config needed. Deployed elsewhere (Netlify, opened locally), those
-     requests simply 404 and the app falls back to the older storage tiers. -->
+<!-- Skill Matrix data is stored on Azure Postgres (qicc_production) via /api/qicc/sm_*. -->
 <style>
 :root{
   --ink:#141b26; --ink-soft:#44526a; --ink-faint:#8992a6;
@@ -993,199 +988,144 @@ let ops=[], trainings=[], mistakes=[], loaded=false, dirty=false;
 const $=id=>document.getElementById(id);
 
 /* ================================================================
-   FIREBASE / FIRESTORE — real multi-user concurrency.
-   -----------------------------------------------------------------
-   NO MANUAL CONFIG NEEDED. When this file is deployed on Firebase
-   Hosting, Firebase automatically serves the SDK + your project's
-   config at reserved URLs (/__/firebase/...) — we just load those
-   scripts at runtime and check whether they initialized an app.
-   Deployed anywhere else (Netlify, a local file), those requests
-   404 immediately and the app falls back to the older single-blob
-   storage (Netlify Blobs / Claude storage / localStorage) exactly
-   as before — nothing breaks.
-
-   Why this exists at all: the old storage layer read/wrote ONE big
-   JSON blob per section. If two people saved around the same moment,
-   whoever saved last silently overwrote the other's changes. With
-   Firestore, every operator / deviation / training milestone /
-   supervisor evaluation is its OWN document, so two people editing
-   different records can never collide — and everyone sees each
-   other's changes live, without refreshing.
-
-   Note on the script loading: these are deliberately loaded and
-   awaited one at a time here (not as <script defer> tags in <head>),
-   because a deferred script only finishes AFTER this whole inline
-   script has already run — checking firebase.apps.length too early
-   would wrongly conclude Firebase isn't available.
+   AZURE POSTGRES — shared Skill Matrix store (qicc_production).
+   Each operator / deviation / training / supervisor eval is its own
+   row. Empty Azure is seeded once from the baked-in roster, or from
+   a leftover browser copy if this PC already had local edits.
    ================================================================ */
-let fsDb=null, fsEnabled=false, fsAuthUid=null;
-async function initFirebase(){
-  try{
-    await loadScript('/__/firebase/10.14.1/firebase-app-compat.js');
-    await loadScript('/__/firebase/10.14.1/firebase-auth-compat.js');
-    await loadScript('/__/firebase/10.14.1/firebase-firestore-compat.js');
-    await loadScript('/__/firebase/init.js?useEmulator=false');
-    if(!(window.firebase&&firebase.apps&&firebase.apps.length))throw new Error('not served from Firebase Hosting');
-    fsDb=firebase.firestore();
-    // Anonymous auth: no login screen, but Firestore rules can still require
-    // request.auth != null so random internet traffic can't write. This is
-    // baseline write-safety, not per-operator accounts — a real login/role
-    // system (matching the operator/supervisor/manager roles in this app)
-    // would be a good follow-up if you want individual accountability.
-    await new Promise((resolve)=>{
-      firebase.auth().onAuthStateChanged(user=>{
-        if(user){ fsAuthUid=user.uid; resolve(); }
-        else firebase.auth().signInAnonymously().catch(()=>resolve());
-      });
-      setTimeout(resolve,4000); // don't block forever if auth is slow/unreachable
-    });
-    fsEnabled=true;
-    return true;
-  }catch(e){ console.warn('Firebase Hosting auto-config not available — falling back to Netlify/local storage.',e); fsDb=null; fsEnabled=false; return false; }
+const AZURE_TABLES={operators:'sm_operators',mistakes:'sm_mistakes',trainings:'sm_trainings',evals:'sm_evals'};
+const AZURE_KEYS={operators:x=>x.emp,mistakes:x=>x.id,trainings:x=>x.id,evals:x=>x.id};
+let azureOk=false;
+const azureLastSynced={};
+function azureSynced(){
+  if(!azureLastSynced[currentSection]) azureLastSynced[currentSection]={operators:[],mistakes:[],trainings:[],evals:[]};
+  return azureLastSynced[currentSection];
 }
-/* Per-section Firestore path: skillmatrix/{section}/{operators|mistakes|trainings|supEvals}/{docId} */
-function fsCol(kind){ return fsDb.collection('skillmatrix').doc(currentSection).collection(kind); }
-let fsUnsubs=[];
-function fsDetachAll(){ fsUnsubs.forEach(u=>{try{u();}catch(e){}}); fsUnsubs=[]; }
-let fsLastSynced={operators:[],mistakes:[],trainings:[],supEvals:[]};
-/* Writes only the docs that are new/changed, and deletes docs that
-   disappeared from the array — never rewrites the whole collection. */
-async function fsDiffPush(kind,arr,keyFn){
-  if(!fsDb)return false;
-  try{
-    const col=fsCol(kind);
-    const last=fsLastSynced[kind]||[];
-    const lastMap=new Map(last.map(x=>[String(keyFn(x)),x]));
-    const curMap=new Map(arr.map(x=>[String(keyFn(x)),x]));
-    const batch=fsDb.batch();
-    let n=0;
-    curMap.forEach((v,k)=>{
-      const prev=lastMap.get(k);
-      if(!prev||JSON.stringify(prev)!==JSON.stringify(v)){ batch.set(col.doc(k),v); n++; }
-    });
-    lastMap.forEach((v,k)=>{ if(!curMap.has(k)){ batch.delete(col.doc(k)); n++; } });
-    if(n>0)await batch.commit();
-    fsLastSynced[kind]=JSON.parse(JSON.stringify(arr));
-    return true;
-  }catch(e){ console.warn('Firestore save failed for',kind,e); return false; }
+function azureDocId(kind,rec){
+  const key=String((kind==='operators'?rec&&rec.emp:rec&&rec.id)||'');
+  return key?currentSection+'::'+key:'';
 }
-/* Attaches live listeners for the CURRENT section. Resolves once the first
-   snapshot of every collection has arrived (so callers can await it like the
-   old one-shot loadData()); after that, updates continue arriving live and
-   re-render automatically whenever ANY user changes that section's data. */
-let fsErrorShown=false;
-// Firestore listener errors are almost always either (a) Firestore rules
-// rejecting the request — usually because Anonymous Auth isn't enabled in
-// the Firebase project yet, so request.auth is never set — or (b) the
-// Firestore database not existing yet. Surface this loudly instead of
-// silently showing an empty app, since that's very hard to self-diagnose.
-function fsHandleError(kind,err){
-  console.error('Firestore listener error on',kind,err);
-  updateSaveBadge('error');
-  if(fsErrorShown)return; fsErrorShown=true;
-  const denied=err&&(err.code==='permission-denied'||/permission/i.test(err.message||''));
-  toast(denied
-    ? '⚠ Firestore blocked this request — check that Anonymous Authentication is enabled in the Firebase console'
-    : '⚠ Could not reach Firestore ('+kind+') — check the Firestore database exists, then reload');
+function azurePayload(row){
+  if(!row)return null;
+  const p=row.payload!=null?row.payload:row;
+  return typeof p==='string'?JSON.parse(p):p;
 }
-function fsAttachAll(){
-  fsDetachAll();
-  fsErrorShown=false;
-  const firstFires={operators:false,mistakes:false,trainings:false,supEvals:false};
-  return new Promise(resolve=>{
-    function maybeResolve(){ if(Object.values(firstFires).every(Boolean))resolve(); }
-    fsUnsubs.push(fsCol('operators').onSnapshot(snap=>{
-      ops=snap.docs.map(d=>d.data());
-      if(!ops.length&&!firstFires.operators){ ops=JSON.parse(JSON.stringify(sectionSeed())); fsDiffPush('operators',ops,o=>o.emp); }
-      fsLastSynced.operators=JSON.parse(JSON.stringify(ops));
-      ensureShape(); loaded=true; firstFires.operators=true; maybeResolve();
-      updateSaveBadge('synced'); if(loaded)renderAll();
-    },e=>{fsHandleError('operators',e);firstFires.operators=true;maybeResolve();}));
-    fsUnsubs.push(fsCol('mistakes').onSnapshot(snap=>{
-      mistakes=snap.docs.map(d=>d.data());
-      if(!mistakes.length&&!firstFires.mistakes&&currentSection==='extrusion'){ mistakes=sectionMistSeed(); fsDiffPush('mistakes',mistakes,m=>m.id); }
-      fsLastSynced.mistakes=JSON.parse(JSON.stringify(mistakes));
-      firstFires.mistakes=true; maybeResolve(); if(loaded)renderAll();
-    },e=>{fsHandleError('mistakes',e);firstFires.mistakes=true;maybeResolve();}));
-    fsUnsubs.push(fsCol('trainings').onSnapshot(snap=>{
-      trainings=snap.docs.map(d=>d.data());
-      fsLastSynced.trainings=JSON.parse(JSON.stringify(trainings));
-      firstFires.trainings=true; maybeResolve(); if(loaded)renderRoadmap();
-    },e=>{fsHandleError('trainings',e);firstFires.trainings=true;maybeResolve();}));
-    fsUnsubs.push(fsCol('supEvals').onSnapshot(snap=>{
-      supEvals=snap.docs.map(d=>d.data());
-      fsLastSynced.supEvals=JSON.parse(JSON.stringify(supEvals));
-      firstFires.supEvals=true; maybeResolve();
-      if(loaded){ if(supMode==='dash')renderSupDash(); renderSumDetail(); renderGroupSummary(); }
-    },e=>{fsHandleError('supEvals',e);firstFires.supEvals=true;maybeResolve();}));
-    setTimeout(resolve,6000); // safety timeout so a stalled listener can't hang startup forever
+async function azureList(kind){
+  const table=AZURE_TABLES[kind];
+  const r=await fetch('/api/qicc/'+table+'?section=eq.'+encodeURIComponent(currentSection)+'&limit=5000');
+  if(!r.ok)throw new Error('azure list '+kind+' '+r.status);
+  azureOk=true;
+  return (await r.json()||[]).map(azurePayload).filter(Boolean);
+}
+async function azureUpsert(kind,rec){
+  const id=azureDocId(kind,rec);
+  if(!id)return false;
+  const r=await fetch('/api/qicc/'+AZURE_TABLES[kind]+'?on_conflict=id',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id,section:currentSection,payload:rec,updated_at:new Date().toISOString()})
   });
+  return r.ok;
+}
+async function azureDelete(kind,rec){
+  const id=azureDocId(kind,rec);
+  if(!id)return false;
+  const r=await fetch('/api/qicc/'+AZURE_TABLES[kind]+'?id=eq.'+encodeURIComponent(id),{method:'DELETE'});
+  return r.status===204||r.ok;
+}
+async function azureDiffPush(kind,arr,keyFn){
+  const last=azureSynced()[kind]||[];
+  const lastMap=new Map(last.map(x=>[String(keyFn(x)),x]));
+  const curMap=new Map((arr||[]).filter(x=>keyFn(x)!=null&&String(keyFn(x))).map(x=>[String(keyFn(x)),x]));
+  let ok=true;
+  for(const[k,v] of curMap){
+    const prev=lastMap.get(k);
+    if(!prev||JSON.stringify(prev)!==JSON.stringify(v)){ if(!await azureUpsert(kind,v)) ok=false; }
+  }
+  for(const[k,v] of lastMap){
+    if(!curMap.has(k)){ if(!await azureDelete(kind,v)) ok=false; }
+  }
+  if(ok) azureSynced()[kind]=JSON.parse(JSON.stringify(arr||[]));
+  return ok;
 }
 function updateSaveBadge(state){
   if(!$('saveBadge'))return;
-  if(state==='synced'){ $('saveBadge').textContent='Synced'; $('saveBadge').classList.remove('dirty'); $('saveBadge').title='Live shared database (Firestore) — every user sees changes instantly. Safe for multiple people editing at once.'; }
-  else if(state==='error'){ $('saveBadge').textContent='Sync error'; $('saveBadge').classList.add('dirty'); $('saveBadge').title='Firestore rejected the request — see the toast message, or open DevTools Console (F12) for details.'; }
+  if(state==='synced'){ $('saveBadge').textContent='Synced'; $('saveBadge').classList.remove('dirty'); $('saveBadge').title='Shared Azure database — every unlocked user sees the same Skill Matrix. Safe for more than one person editing.'; }
+  else if(state==='error'){ $('saveBadge').textContent='Sync error'; $('saveBadge').classList.add('dirty'); $('saveBadge').title='Could not reach Azure. Check the site PIN, then reload.'; }
 }
 
 /* ================= STORAGE =================
-   Storage priority, checked in order every time:
-   1) Netlify Function + Netlify Blobs (/.netlify/functions/store) — shared,
-      central storage when this file is deployed on Netlify (see netlify/functions/store.js).
-   2) Claude artifact storage (window.storage) — when running inside Claude.ai.
-   3) Browser localStorage — final fallback (e.g. opened as a local file, or offline).
-   Plus manual JSON backup / restore for transferring between PCs. */
+   1) Azure Postgres via /api/qicc/sm_*
+   2) Browser localStorage — offline fallback + one-time upload if Azure is empty
+   Plus manual JSON backup / restore. */
 const KEY='skillmatrix-v1';
-/* Per-section storage key. Extrusion keeps the original key so existing saved
-   data is untouched; Assembly / Metallurgy get their own namespaced keys. */
 function dataKey(){ return currentSection==='extrusion'?KEY:KEY+'::'+currentSection; }
-const NETLIFY_STORE_URL='/.netlify/functions/store';
-const hasClaudeStore=typeof window.storage!=='undefined'&&window.storage&&typeof window.storage.get==='function';
-let netlifyStoreOk=null; // null = not checked yet, true/false after first successful/failed call
-async function netlifyGet(key){
-  try{
-    const r=await fetch(`${NETLIFY_STORE_URL}?key=${encodeURIComponent(key)}`);
-    if(!r.ok)throw 0;
-    const data=await r.json();
-    netlifyStoreOk=true;
-    return data.value==null?null:data.value;
-  }catch(e){ if(netlifyStoreOk==null)netlifyStoreOk=false; return undefined; } // undefined = "couldn't reach it, try next layer"
-}
-async function netlifySet(key,val){
-  try{
-    const r=await fetch(`${NETLIFY_STORE_URL}?key=${encodeURIComponent(key)}`,{
-      method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({value:val})});
-    if(!r.ok)throw 0;
-    netlifyStoreOk=true; return true;
-  }catch(e){ if(netlifyStoreOk==null)netlifyStoreOk=false; return false; }
-}
 async function storGet(){
-  const k=dataKey();
-  const nv=await netlifyGet(k);
-  if(nv!==undefined)return nv;
-  if(hasClaudeStore){try{const r=await window.storage.get(k);return r&&r.value?r.value:null;}catch(e){return null;}}
-  try{return localStorage.getItem(k);}catch(e){return null;}
+  try{return localStorage.getItem(dataKey());}catch(e){return null;}
 }
 async function storSet(val){
-  const k=dataKey();
-  if(await netlifySet(k,val))return true;
-  if(hasClaudeStore){try{const r=await window.storage.set(k,val);if(r)return true;}catch(e){}}
-  try{localStorage.setItem(k,val);return true;}catch(e){return false;}
+  try{localStorage.setItem(dataKey(),val);return true;}catch(e){return false;}
 }
-/* Deviation seed only ships with Extrusion; other sections start clean. */
 function sectionMistSeed(){ return currentSection==='extrusion'?JSON.parse(JSON.stringify(SEED_MIST)):[]; }
 function applyData(d){
   ops=d.ops||[];trainings=d.trainings||[];
   mistakes=d.mistakes||sectionMistSeed();
 }
+function rememberLocal(){
+  try{localStorage.setItem(dataKey(),JSON.stringify({ops,trainings,mistakes,savedAt:new Date().toISOString()}));}catch(e){}
+  try{localStorage.setItem(supKey(),JSON.stringify(supEvals||[]));}catch(e){}
+}
+async function loadFromAzure(){
+  const [o,m,t,e]=await Promise.all([
+    azureList('operators'), azureList('mistakes'), azureList('trainings'), azureList('evals')
+  ]);
+  ops=o; mistakes=m; trainings=t; supEvals=e;
+  const snap=azureSynced();
+  snap.operators=JSON.parse(JSON.stringify(ops));
+  snap.mistakes=JSON.parse(JSON.stringify(mistakes));
+  snap.trainings=JSON.parse(JSON.stringify(trainings));
+  snap.evals=JSON.parse(JSON.stringify(supEvals));
+  let seeded=false;
+  if(!ops.length){
+    const raw=await storGet();
+    if(raw){ try{applyData(JSON.parse(raw));}catch(err){ ops=[]; } }
+    if(!ops.length){ ops=JSON.parse(JSON.stringify(sectionSeed())); trainings=trainings||[]; mistakes=mistakes.length?mistakes:sectionMistSeed(); }
+    seeded=true;
+  }
+  if(seeded){
+    await azureDiffPush('operators',ops,AZURE_KEYS.operators);
+    await azureDiffPush('mistakes',mistakes,AZURE_KEYS.mistakes);
+    await azureDiffPush('trainings',trainings,AZURE_KEYS.trainings);
+  }
+  if(!(supEvals&&supEvals.length)){
+    try{
+      const raw=localStorage.getItem(supKey());
+      if(raw) supEvals=JSON.parse(raw)||[];
+    }catch(err){ supEvals=supEvals||[]; }
+    if(supEvals&&supEvals.length) await azureDiffPush('evals',supEvals,AZURE_KEYS.evals);
+    else azureSynced().evals=[];
+  }
+}
 async function loadData(){
-  if(fsEnabled){ await fsAttachAll(); loaded=true; renderAll(); return; }
+  try{
+    await loadFromAzure();
+    if(!ops.length) ops=JSON.parse(JSON.stringify(sectionSeed()));
+    ensureShape();
+    updateSaveBadge('synced');
+    loaded=true; renderAll();
+    return;
+  }catch(e){
+    console.warn('Azure skill matrix load failed',e);
+    azureOk=false;
+    updateSaveBadge('error');
+  }
   try{
     const raw=await storGet();
     if(raw)applyData(JSON.parse(raw)); else throw 0;
   }catch(e){ ops=JSON.parse(JSON.stringify(sectionSeed())); trainings=[]; mistakes=sectionMistSeed(); }
   if(!ops.length) ops=JSON.parse(JSON.stringify(sectionSeed()));
   ensureShape();
-  $('saveBadge').title=netlifyStoreOk?'Auto-saving to this site\'s shared storage (Netlify Blobs). NOTE: only safe for one editor at a time.':hasClaudeStore?'Auto-saving to Claude storage':'Auto-saving to this browser (localStorage). Use Backup JSON for a portable copy.';
+  $('saveBadge').title='Auto-saving to this browser only. Azure is unreachable — use Backup JSON if you need a portable copy.';
   loaded=true; renderAll();
 }
 let saveTimer=null;
@@ -1193,17 +1133,40 @@ function scheduleSave(){
   dirty=true; $('saveBadge').textContent='Saving…'; $('saveBadge').classList.add('dirty');
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
-    if(fsEnabled){
-      const okO=await fsDiffPush('operators',ops,o=>o.emp);
-      const okM=await fsDiffPush('mistakes',mistakes,m=>m.id);
-      const okT=await fsDiffPush('trainings',trainings,t=>t.id);
-      if(okO&&okM&&okT)updateSaveBadge('synced'); else {$('saveBadge').textContent='Save failed — check connection';}
-      dirty=false; return;
+    rememberLocal();
+    if(azureOk){
+      const okO=await azureDiffPush('operators',ops,AZURE_KEYS.operators);
+      const okM=await azureDiffPush('mistakes',mistakes,AZURE_KEYS.mistakes);
+      const okT=await azureDiffPush('trainings',trainings,AZURE_KEYS.trainings);
+      if(okO&&okM&&okT){ dirty=false; updateSaveBadge('synced'); }
+      else $('saveBadge').textContent='Save failed — check connection';
+      return;
     }
     const ok=await storSet(JSON.stringify({ops,trainings,mistakes,savedAt:new Date().toISOString()}));
     if(ok){dirty=false;$('saveBadge').textContent='Saved';$('saveBadge').classList.remove('dirty');}
     else{$('saveBadge').textContent='Save failed — use Backup JSON';}
   },600);
+}
+let azurePollTimer=null;
+function startAzurePoll(){
+  if(azurePollTimer)return;
+  azurePollTimer=setInterval(async()=>{
+    if(document.visibilityState!=='visible'||dirty||!azureOk)return;
+    try{
+      const [o,m,t,e]=await Promise.all([
+        azureList('operators'), azureList('mistakes'), azureList('trainings'), azureList('evals')
+      ]);
+      if(dirty)return;
+      ops=o; mistakes=m; trainings=t; supEvals=e;
+      const snap=azureSynced();
+      snap.operators=JSON.parse(JSON.stringify(ops));
+      snap.mistakes=JSON.parse(JSON.stringify(mistakes));
+      snap.trainings=JSON.parse(JSON.stringify(trainings));
+      snap.evals=JSON.parse(JSON.stringify(supEvals));
+      ensureShape();
+      if(loaded)renderAll();
+    }catch(err){ /* keep current view if a poll fails */ }
+  },12000);
 }
 /* ---- JSON backup / restore ---- */
 function backupJson(){
@@ -2724,32 +2687,28 @@ let supSaveTimer=null;
 function scheduleSaveSup(){
   clearTimeout(supSaveTimer);
   supSaveTimer=setTimeout(async()=>{
-    if(fsEnabled){ await fsDiffPush('supEvals',supEvals,r=>r.id); return; }
-    const k=supKey();
-    if(await netlifySet(k,JSON.stringify(supEvals)))return;
-    if(hasClaudeStore){try{await window.storage.set(k,JSON.stringify(supEvals));return;}catch(e){}}
-    try{localStorage.setItem(k,JSON.stringify(supEvals));}catch(e){}
+    rememberLocal();
+    if(azureOk){
+      const ok=await azureDiffPush('evals',supEvals,AZURE_KEYS.evals);
+      if(ok) updateSaveBadge('synced'); else updateSaveBadge('error');
+      return;
+    }
+    try{localStorage.setItem(supKey(),JSON.stringify(supEvals));}catch(e){}
   },500);
 }
 async function loadSupEvals(){
-  if(fsEnabled)return; // fsAttachAll() already keeps supEvals live for the current section
-  const k=supKey();
+  if(azureOk)return;
   try{
-    let raw=await netlifyGet(k);
-    if(raw===undefined){
-      raw=null;
-      if(hasClaudeStore){try{const r=await window.storage.get(k);raw=r&&r.value?r.value:null;}catch(e){}}
-      if(!raw)raw=localStorage.getItem(k);
-    }
+    const raw=localStorage.getItem(supKey());
     supEvals=raw?JSON.parse(raw):[];
   }catch(e){ supEvals=[]; }
 }
-/* Firebase must attempt init before the first loadData()/loadSupEvals() call
-   so both correctly know whether to use Firestore or the legacy blob path. */
-initFirebase().then(()=>{
-  updateSectionUI();
-  loadSupEvals().then(()=>{ if(supMode==='dash')renderSupDash(); });
-  loadData();
+updateSectionUI();
+loadData().then(()=>{
+  if(!azureOk) return loadSupEvals();
+}).then(()=>{
+  if(supMode==='dash')renderSupDash();
+  startAzurePoll();
 });
 </script>
 </body>

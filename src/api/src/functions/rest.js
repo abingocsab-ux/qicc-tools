@@ -22,6 +22,7 @@ const TABLES = {
     "mc_items", "mc_products", "mc_runs", "mc_run_items", "mc_run_materials",
     "mc_thickness", "mc_nav_ledger", "mc_nav_snapshots", "mc_model", "mc_run_analysis",
     "ds_cables", "ds_stages", "ds_conductors", "ds_bom", "tr_report_summary",
+    "sm_operators", "sm_mistakes", "sm_trainings", "sm_evals",
   ]),
 };
 
