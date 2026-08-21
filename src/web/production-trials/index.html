@@ -2,12 +2,13 @@
 <html lang="en" class="light">
 <head>
 <meta charset="utf-8">
+<script src="/gate.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#eef2f7">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Trial Run Reports — EXT</title>
+<title>Production Trials — QICC</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><text y='68' x='50' text-anchor='middle' font-size='50' fill='%2338bdf8' font-family='sans-serif' font-weight='700'>TR</text></svg>">
 <style>
 :root{
@@ -644,6 +645,10 @@ window.LocalStore = (function () {
   const DB_NAME = 'trialrun_local', DB_VER = 1;
   const TABLES = ['tr_reports', 'tr_photos', 'tr_attachments', 'tr_samples',
                   'tr_options', 'tr_signatures'];
+  const LIST_SELECT = {
+    tr_photos: 'id,report_id,storage_path,caption,created_at',
+    tr_attachments: 'id,report_id,storage_path,filename,page_count,sort,created_at'
+  };
 
   const mem = {};                       // table -> array of rows, held in memory
   TABLES.forEach(t => (mem[t] = []));
@@ -702,14 +707,28 @@ window.LocalStore = (function () {
       f.forEach(([k, v]) => files.set(k, v));
       try {
         for (const table of TABLES) {
-          const r = await fetch('/api/qicc/' + table);
+          const extra = LIST_SELECT[table] ? ('?select=' + LIST_SELECT[table]) : '';
+          const r = await fetch('/api/qicc/' + table + extra);
           if (!r.ok) continue;
           const rows = await r.json();
-          if (Array.isArray(rows) && rows.length) {
-            mem[table] = rows;
-            await save(table);
-          }
+          if (!Array.isArray(rows) || !rows.length) continue;
+          const byId = {};
+          (mem[table] || []).forEach(row => {
+            if (row && row.id != null) byId[String(row.id)] = row;
+          });
+          rows.forEach(row => {
+            if (!row || row.id == null) return;
+            const id = String(row.id);
+            const local = byId[id];
+            if (!local) { byId[id] = row; return; }
+            const lt = Date.parse(local.updated_at || '') || 0;
+            const rt = Date.parse(row.updated_at || '') || 0;
+            byId[id] = rt >= lt ? Object.assign({}, local, row) : local;
+          });
+          mem[table] = Object.keys(byId).map(k => byId[k]);
+          await save(table);
         }
+        await hydrateStoredFiles();
       } catch (e) {
         console.warn('Azure trials load failed', e);
       }
@@ -745,6 +764,92 @@ window.LocalStore = (function () {
     r.updated_at = nowISO();
     if (table === 'tr_reports' && !r.ref_no) r.ref_no = nextRef(r);
     return r;
+  }
+
+  async function hydrateStoredFiles() {
+    const jobs = [
+      ['tr_signatures', 'image_data'],
+      ['tr_photos', 'file_data'],
+      ['tr_attachments', 'file_data']
+    ];
+    for (const [table, col] of jobs) {
+      const pending = [];
+      for (const row of (mem[table] || [])) {
+        if (!row.storage_path) continue;
+        const k = 'trial-photos/' + row.storage_path;
+        const have = files.get(k);
+        if (have && String(have).startsWith('data:')) continue;
+        if (row[col]) {
+          files.set(k, row[col]);
+          try { await idbPut('files', k, row[col]); } catch (e) { /* quota */ }
+          continue;
+        }
+        pending.push(row);
+      }
+      for (let i = 0; i < pending.length; i += 3) {
+        await Promise.all(pending.slice(i, i + 3).map(async row => {
+          const r = await fetch('/api/qicc/' + table + '?id=eq.' + encodeURIComponent(row.id)
+            + '&select=' + col);
+          if (!r.ok) return;
+          const got = await r.json();
+          const data = got[0] && got[0][col];
+          if (!data) return;
+          const k = 'trial-photos/' + row.storage_path;
+          files.set(k, data);
+          try { await idbPut('files', k, data); } catch (e) { /* quota */ }
+        }));
+      }
+    }
+  }
+
+  function attachBlob(table, rows) {
+    if (table !== 'tr_photos' && table !== 'tr_attachments' && table !== 'tr_signatures') return rows;
+    return rows.map(row => {
+      const path = row.storage_path;
+      if (!path) return row;
+      const url = files.get('trial-photos/' + path);
+      if (!url || !String(url).startsWith('data:')) return row;
+      const out = Object.assign({}, row);
+      if (table === 'tr_signatures') out.image_data = out.image_data || url;
+      else out.file_data = out.file_data || url;
+      return out;
+    });
+  }
+
+  async function azureWrite(op, table, rows, conflict) {
+    if (op === 'select' || table === 'tr_report_summary') return;
+    if (!rows.length) return;
+    try {
+      if (op === 'insert' || op === 'upsert') {
+        const q = (op === 'upsert' && conflict && conflict.length)
+          ? 'on_conflict=' + conflict.join(',')
+          : 'on_conflict=id';
+        const r = await fetch('/api/qicc/' + table + '?' + q, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(attachBlob(table, rows))
+        });
+        if (!r.ok) throw new Error(String(r.status));
+      } else if (op === 'update') {
+        for (const row of rows) {
+          if (row.id == null) continue;
+          const r = await fetch('/api/qicc/' + table + '?id=eq.' + encodeURIComponent(row.id), {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(attachBlob(table, [row])[0])
+          });
+          if (!r.ok) throw new Error(String(r.status));
+        }
+      } else if (op === 'delete') {
+        for (const row of rows) {
+          if (row.id == null) continue;
+          const r = await fetch('/api/qicc/' + table + '?id=eq.' + encodeURIComponent(row.id), { method: 'DELETE' });
+          if (!r.ok && r.status !== 204) throw new Error(String(r.status));
+        }
+      }
+    } catch (e) {
+      console.warn('Azure trials write failed', table, e);
+    }
   }
 
   /* tr_report_summary was a database view: the reports plus a sort key
@@ -843,6 +948,7 @@ window.LocalStore = (function () {
           mem[this.t] = keep;
           await save(this.t);
         }
+        if (this.op !== 'select') await azureWrite(this.op, this.t, out, this.conflict);
       } catch (e) {
         return { data: null, error: { message: (e && e.message) || String(e) } };
       }
@@ -895,7 +1001,9 @@ window.LocalStore = (function () {
         },
         // synchronous by design — the app builds HTML with it
         getPublicUrl(path) {
-          return { data: { publicUrl: files.get(key(path)) || '' } };
+          const local = files.get(key(path));
+          if (local) return { data: { publicUrl: local } };
+          return { data: { publicUrl: '' } };
         }
       };
     }
@@ -2252,7 +2360,7 @@ function wireReport() {
   if (sign) sign.onclick = async () => {
     await loadSigs();
     const appr = sigFor(r.approver_name || r.reviewed_by);
-    const seeded = r.approver_email || (appr && appr.email) || '';
+    const seeded = azureEmail(r.approver_email || (appr && appr.email) || '');
     S.modal = { kind: 'sign', signer: r.prepared_by || '', signer2: r.prepared_by2 || '',
                 approver: r.approver_name || r.reviewed_by || '',
                 approverEmail: seeded, _autoMail: seeded, note: '' };
@@ -2848,11 +2956,24 @@ function restoreData() {
    ================================================================== */
 
 const SIG_MAX = 900;                       // px — signatures print small
+const AZURE_EMAIL = 'rbasco36@gmail.com';
+function azureEmail(email) {
+  const e = String(email || '').trim();
+  if (/^ryan\.basco@nexans\.com$/i.test(e)) return AZURE_EMAIL;
+  return e;
+}
+function visibleEmail(email) {
+  const e = azureEmail(email);
+  if (/@nexans\.com$/i.test(e)) return '';
+  return e;
+}
 
 async function loadSigs() {
   const { data, error } = await sb.from('tr_signatures').select('*').order('person_name');
   if (!error) S.sigs = (data || []).map(s => ({
-    ...s, url: sb.storage.from(BUCKET).getPublicUrl(s.storage_path).data.publicUrl
+    ...s,
+    email: azureEmail(s.email) || s.email,
+    url: s.image_data || sb.storage.from(BUCKET).getPublicUrl(s.storage_path).data.publicUrl
   }));
 }
 
@@ -2867,6 +2988,12 @@ const storageError = (e, what) => {
 
 const sigFor = name => (S.sigs || []).find(
   s => (s.person_name || '').toLowerCase() === (name || '').toLowerCase());
+
+function checkMemberPin(sig, entered) {
+  if (!sig) throw new Error('No signature on file for that name');
+  if (!sig.pin) return;
+  if ((entered || '') !== sig.pin) throw new Error('That PIN does not match');
+}
 
 /* -------------------------------------------------------- roles roster
    Who can be picked as a report preparer, and who can be picked as the
@@ -2965,9 +3092,10 @@ function tidySignature(file) {
   });
 }
 
-async function saveSignature({ name, email, title, pin, file }) {
+async function saveSignature({ name, email, title, pin, file, currentPin }) {
   if (!name.trim()) throw new Error('Enter the name that goes on the signature line');
   const existing = sigFor(name);
+  if (existing) checkMemberPin(existing, currentPin);
   let path = existing && existing.storage_path;
   if (file) {
     const blob = await tidySignature(file);
@@ -2977,16 +3105,19 @@ async function saveSignature({ name, email, title, pin, file }) {
     if (up.error) throw new Error(storageError(up.error, 'save that signature'));
   }
   if (!path) throw new Error('Choose a signature image first');
-  const row = { person_name: name.trim(), email: (email || '').trim() || null,
+  const pub = sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  const nextPin = (pin || '').trim() || (existing && existing.pin) || null;
+  const row = { person_name: name.trim(), email: azureEmail(email) || null,
                 job_title: (title || '').trim() || null, storage_path: path,
-                pin: (pin || '').trim() || null };
+                pin: nextPin };
+  if (pub && String(pub).startsWith('data:')) row.image_data = pub;
   const { error } = existing
     ? await sb.from('tr_signatures').update(row).eq('id', existing.id)
     : await sb.from('tr_signatures').insert(row);
   if (error) throw new Error(error.message);
   await loadSigs();
-  // cache-bust the public URL so a replaced signature shows immediately
-  const s = sigFor(name); if (s) s.url += '?v=' + Date.now();
+  const s = sigFor(name);
+  if (s && s.url && !String(s.url).startsWith('data:')) s.url += '?v=' + Date.now();
 }
 
 /* ---------------------------------------------------- approval routing */
@@ -3097,7 +3228,7 @@ function outlookDraft(r, note) {
   const subject = `Approval required — Trial No. ${r.trial_no || ''} ${r.title || ''}`.trim();
   const html = `<!doctype html><html><body>${approvalMailHTML(r, note)}</body></html>`;
   const eml = [
-    'To: ' + (r.approver_email || ''),
+    'To: ' + azureEmail(r.approver_email || ''),
     'Subject: ' + mimeHeader(subject),
     'X-Unsent: 1',                       // open as a draft, not as received mail
     'MIME-Version: 1.0',
@@ -3135,7 +3266,7 @@ async function copyRich(html, text) {
 async function openApprovalMail(r, note) {
   const subject = `Approval required — Trial No. ${r.trial_no || ''} ${r.title || ''}`.trim();
   let text = approvalMail(r, note);
-  const build = body => 'mailto:' + encodeURIComponent(r.approver_email || '')
+  const build = body => 'mailto:' + encodeURIComponent(azureEmail(r.approver_email || ''))
     + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
   let href = build(text);
   if (href.length > 1900) {           // Outlook silently truncates long mailto links
@@ -3164,14 +3295,16 @@ async function doSignAndSend({ signer, signer2, pin2, approver, approverEmail, n
   const r = S.detail;
   const sig = sigFor(signer);
   if (!sig) throw new Error(`${signer} has no signature on file yet — add one first`);
-  if (sig.pin && (pin || '') !== sig.pin) throw new Error('That PIN does not match');
+  checkMemberPin(sig, pin);
   // an optional second preparer signs at the same moment, under the same rules
   const two = (signer2 || '').trim();
   const sig2 = two ? sigFor(two) : null;
   if (two && !sig2) throw new Error(`${two} has no signature on file yet — add one first`);
   if (two && two === signer) throw new Error('The second preparer must be a different person');
-  if (sig2 && sig2.pin && (pin2 || '') !== sig2.pin)
-    throw new Error(`That PIN does not match for ${two}`);
+  if (sig2) {
+    try { checkMemberPin(sig2, pin2); }
+    catch (e) { throw new Error(`That PIN does not match for ${two}`); }
+  }
   const wants = needsApproval(r);
   if (wants) {
     if (!approver.trim()) throw new Error('Enter who approves this report');
@@ -3183,7 +3316,7 @@ async function doSignAndSend({ signer, signer2, pin2, approver, approverEmail, n
     status: 'submitted', submitted_by: signer, submitted_at: now,
     prepared_by: signer, prepared_sig: sig.storage_path,
     prepared_by2: two || null, prepared_sig2: sig2 ? sig2.storage_path : null,
-    approver_name: approver.trim(), approver_email: approverEmail.trim(),
+    approver_name: approver.trim(), approver_email: azureEmail(approverEmail.trim()) || null,
     reviewed_by: approver.trim(), sent_at: now,
     approved_by: null, approved_at: null, approved_sig: null, decision_note: null
   } : {
@@ -3206,7 +3339,7 @@ async function doDecide({ who, pin, decision, note }) {
   const r = S.detail;
   const sig = sigFor(who);
   if (!sig) throw new Error(`${who} has no signature on file yet — add one first`);
-  if (sig.pin && (pin || '') !== sig.pin) throw new Error('That PIN does not match');
+  checkMemberPin(sig, pin);
   if (decision === 'rejected' && !(note || '').trim())
     throw new Error('Say what needs to change before returning the report');
   const now = new Date().toISOString();
@@ -3357,7 +3490,7 @@ function modalHTML() {
     const rows = (S.sigs || []).length ? S.sigs.map(s => `<tr>
         <td><img class="sigimg sm" src="${esc(s.url)}" alt=""></td>
         <td><b>${esc(s.person_name)}</b><br><span class="dim">${esc(s.job_title || '')}</span></td>
-        <td class="dim">${esc(s.email || '—')}</td>
+        <td class="dim">${esc(visibleEmail(s.email) || '—')}</td>
         <td class="dim">${s.pin ? 'PIN set' : 'no PIN'}</td>
         <td><button class="linkbtn" data-sigedit="${esc(s.person_name)}">Replace</button></td>
       </tr>`).join('')
@@ -3368,13 +3501,33 @@ function modalHTML() {
         that person signs. A PIN stops someone else signing in their name from a shared PC.</p>
       <table class="sigtable">${rows}</table>
       ${err}
-      <h3>${m.editing ? 'Replace ' + esc(m.editing) + "'s signature" : 'Add a signature'}</h3>
+      ${m.unlocking ? (() => {
+        const s = sigFor(m.unlocking);
+        return `<h3>Replace ${esc(m.unlocking)}'s signature</h3>
+          <div class="sigpreview">${s && s.url
+            ? `<img class="sigimg" src="${esc(s.url)}" alt="">
+               <span class="dim">${esc(s.job_title || m.unlocking)}</span>`
+            : `<span class="dim">No image on file yet.</span>`}</div>
+          <p class="dim">Enter ${esc(m.unlocking)}'s PIN to edit this signature.</p>
+          <div class="mdgrid">
+            <label>PIN
+              <input id="sg_unlock_pin" type="password" inputmode="numeric" autocomplete="off"
+                value="${esc(m.unlockPin || '')}" placeholder="Member PIN"></label>
+          </div>
+          <div class="mdfoot">
+            <button class="iconbtn" id="sg_unlock_cancel">Cancel</button>
+            <button class="iconbtn primary" id="sg_unlock">${m.busy ? 'Checking…' : 'Continue'}</button>
+          </div></div>`;
+      })() : `<h3>${m.editing ? 'Replace ' + esc(m.editing) + "'s signature" : 'Add a signature'}</h3>
       <div class="mdgrid">
         <label>Name on the signature line
-          <input id="sg_name" value="${esc(m.editing || m.name || '')}" placeholder="Shanavas Khalid"></label>
+          <input id="sg_name" value="${esc(m.editing || m.name || '')}" placeholder="Shanavas Khalid"
+            ${m.editing ? 'readonly' : ''}></label>
         <label>Job title <input id="sg_title" value="${esc(m.title || '')}" placeholder="Process Manager"></label>
-        <label>Email <input id="sg_email" type="email" value="${esc(m.email || '')}" placeholder="rbasco36@gmail.com"></label>
-        <label>PIN (optional) <input id="sg_pin" value="${esc(m.pin || '')}" placeholder="4 digits"></label>
+        <label>Email <input id="sg_email" type="email" value="${esc(visibleEmail(m.email) || '')}" placeholder="rbasco36@gmail.com"></label>
+        <label>${m.editing ? 'New PIN <span class="dim">(blank keeps the current PIN)</span>' : 'PIN (optional)'}
+          <input id="sg_pin" type="password" inputmode="numeric" autocomplete="off"
+            value="${esc(m.pin || '')}" placeholder="${m.editing ? 'leave blank to keep' : '4 digits'}"></label>
       </div>
       <label class="fileline">Signature image
         <input id="sg_file" type="file" accept="image/*">
@@ -3383,7 +3536,7 @@ function modalHTML() {
       <div class="mdfoot">
         <button class="iconbtn" data-mdclose>Close</button>
         <button class="iconbtn primary" id="sg_save">${m.busy ? 'Saving…' : 'Save signature'}</button>
-      </div></div>`;
+      </div></div>`}`
   }
 
   if (m.kind === 'sign') {
@@ -3413,7 +3566,7 @@ function modalHTML() {
         ${wants ? `<label>Approval authority <span class="dim">(Shanavas away? pick anyone on the list)</span>
           ${picker('sn_appr', 'approver', m.approver)}</label>
         <label>Their email
-          <input id="sn_mail" type="email" value="${esc(m.approverEmail || '')}"
+          <input id="sn_mail" type="email" value="${esc(azureEmail(m.approverEmail || ''))}"
             placeholder="rbasco36@gmail.com"></label>` : ''}
       </div>
       ${wants ? `<label>Message to include <textarea id="sn_note" rows="3"
@@ -3517,7 +3670,7 @@ function wireModal() {
   };
   const keep = () => {                      // hold typed values across re-renders
     if (m.kind === 'sigs') Object.assign(m, { name: val('sg_name'), title: val('sg_title'),
-      email: val('sg_email'), pin: val('sg_pin') });
+      email: val('sg_email'), pin: val('sg_pin'), unlockPin: val('sg_unlock_pin') });
     if (m.kind === 'sign') Object.assign(m, { signer: person('sn_signer'), pin: val('sn_pin'),
       signer2: val('sn_signer2'), pin2: val('sn_pin2'),
       approver: person('sn_appr'), approverEmail: val('sn_mail'), note: val('sn_note') });
@@ -3531,16 +3684,42 @@ function wireModal() {
   if (m.kind === 'sigs') {
     $$('[data-sigedit]').forEach(b => b.onclick = () => {
       const s = sigFor(b.dataset.sigedit);
-      md({ editing: s.person_name, name: s.person_name, title: s.job_title || '',
-           email: s.email || '', pin: s.pin || '', err: '' });
+      if (!s) return;
+      if (s.pin) {
+        md({ unlocking: s.person_name, unlockPin: '', editing: '', verifiedPin: '',
+             name: '', title: '', email: '', pin: '', err: '' });
+        return;
+      }
+      md({ unlocking: '', editing: s.person_name, name: s.person_name, title: s.job_title || '',
+           email: s.email || '', pin: '', verifiedPin: '', err: '' });
     });
-    $('#sg_save').onclick = async () => {
+    const unlockBtn = $('#sg_unlock');
+    if (unlockBtn) unlockBtn.onclick = () => {
+      const s = sigFor(m.unlocking);
+      const entered = val('sg_unlock_pin');
+      try {
+        checkMemberPin(s, entered);
+        md({ unlocking: '', unlockPin: '', editing: s.person_name, name: s.person_name,
+             title: s.job_title || '', email: s.email || '', pin: '', verifiedPin: entered, err: '' });
+      } catch (e) { md({ unlockPin: entered, err: e.message }); }
+    };
+    const unlockCancel = $('#sg_unlock_cancel');
+    if (unlockCancel) unlockCancel.onclick = () => {
+      md({ unlocking: '', unlockPin: '', editing: '', verifiedPin: '', err: '' });
+    };
+    const unlockPin = $('#sg_unlock_pin');
+    if (unlockPin) {
+      unlockPin.onkeydown = e => { if (e.key === 'Enter') unlockBtn && unlockBtn.click(); };
+      unlockPin.focus();
+    }
+    const saveBtn = $('#sg_save');
+    if (saveBtn) saveBtn.onclick = async () => {
       keep();
       const file = $('#sg_file').files[0];
       md({ busy: true, err: '' });
       try {
         await saveSignature({ name: m.editing || m.name, email: m.email,
-                              title: m.title, pin: m.pin, file });
+                              title: m.title, pin: m.pin, file, currentPin: m.verifiedPin });
         S.modal = m.returnTo
           ? Object.assign(m.returnTo, { err: '' })
           : { kind: 'sigs' };
@@ -3622,7 +3801,7 @@ function wireModal() {
       // Follow the chosen approver, but never clobber an address typed by hand:
       // only overwrite what we ourselves filled in last time.
       if (mail && (!mail.value.trim() || mail.value === m._autoMail)) {
-        mail.value = (s && s.email) || '';
+        mail.value = visibleEmail((s && s.email) || '');
         m._autoMail = mail.value;
       }
       keep();

@@ -22,7 +22,7 @@ def with_db(url: str, dbname: str) -> str:
 def main() -> None:
     raw = az_json([
         "staticwebapp", "appsettings", "list",
-        "-g", "rg-qicc-tools", "-n", "qicc-tools",
+        "-g", "rg-qicc-tools", "-n", "qicc-production",
     ])
     props = raw.get("properties") if isinstance(raw, dict) else None
     if not isinstance(props, dict) or not props:
@@ -38,7 +38,7 @@ def main() -> None:
     subprocess.check_call(
         [
             AZ, "staticwebapp", "appsettings", "set",
-            "-g", "rg-qicc-tools", "-n", "qicc-tools",
+            "-g", "rg-qicc-tools", "-n", "qicc-production",
             "--setting-names",
             *[f"{k}={v}" for k, v in props.items()],
         ]
