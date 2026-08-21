@@ -67,9 +67,6 @@
     "#qicc-gate .az-head svg{width:28px;height:28px;flex-shrink:0;display:block}" +
     "#qicc-gate .az-head b{display:block;font-size:16px;font-weight:600;color:#201f1e;letter-spacing:.01em;line-height:1.15}" +
     "#qicc-gate .az-head span{display:block;font-size:12px;color:#605e5c;margin-top:2px}" +
-    "#qicc-gate .brands{display:flex;align-items:center;justify-content:center;gap:12px;margin:0 0 14px;flex-wrap:wrap}" +
-    "#qicc-gate .brands img{display:block;height:44px;width:auto}" +
-    "#qicc-gate .brands .nx{height:22px}" +
     "#qicc-gate h1{margin:0 0 4px;font-size:20px;letter-spacing:.01em;color:#201f1e;text-align:center}" +
     "#qicc-gate p{margin:0 0 16px;color:#605e5c;font-size:14px;line-height:1.4;text-align:center}" +
     "#qicc-gate input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:4px;border:1.5px solid #8a8886;" +
@@ -121,9 +118,6 @@
       '<div class="card">' +
         '<div class="az-head">' + azMark +
           "<div><b>Microsoft Azure</b><span>Static Web Apps</span></div>" +
-        "</div>" +
-        '<div class="brands">' +
-          '<img class="nx" src="/nexans-logo.svg" alt="Nexans">' +
         "</div>" +
         "<h1>QICC Production</h1>" +
         "<p>Enter the site PIN to open the apps.</p>" +

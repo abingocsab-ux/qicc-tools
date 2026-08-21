@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<script src="/gate.js?v=4"></script>
+<script src="/gate.js?v=5"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QICC Production Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -55,8 +55,7 @@ nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-con
   padding:12px 5%;background:var(--nav-bg);backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);
   border-bottom:1px solid var(--line);transition:box-shadow .3s,background .3s}
 nav.scrolled{box-shadow:0 6px 30px rgba(0,0,0,.25)}
-.logo{display:flex;align-items:center;gap:12px}
-.logo-nexans{height:22px;width:auto;display:block}
+.logo{display:flex;align-items:center;gap:12px;font-family:var(--display);font-weight:700;font-size:1.05rem;letter-spacing:.02em}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(1.25)}}
 
 /* Tab pills, right-aligned beside the theme toggle */
@@ -197,8 +196,6 @@ html[data-theme="light"] .nav-links a.active{background:var(--bg);box-shadow:0 1
 
 /* ─── Footer ─── */
 footer{position:relative;z-index:1;border-top:1px solid var(--line);padding:2.8rem 5%;max-width:1100px;margin:auto}
-.footer-brand{display:flex;align-items:center;justify-content:center;gap:1.6rem;flex-wrap:wrap;margin-bottom:1.4rem}
-.footer-nexans{height:24px;width:auto;display:block}
 footer p{text-align:center;color:var(--dim);font-size:.8rem}
 
 /* ─── Responsive ─── */
@@ -232,7 +229,7 @@ footer p{text-align:center;color:var(--dim);font-size:.8rem}
 <!-- NAV -->
 <nav id="topnav">
   <a href="#" class="logo" onclick="switchTab('apps');return false;" title="QICC Production Platform">
-    <img src="/nexans-logo.svg" class="logo-nexans" alt="Nexans">
+    QICC Production
   </a>
   <div class="nav-right">
     <span class="sync-badge" id="syncBadge" title="Data source"><span class="dot"></span> <span id="syncLabel">SYNCED</span></span>
@@ -322,10 +319,7 @@ footer p{text-align:center;color:var(--dim);font-size:.8rem}
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-brand">
-    <img src="/nexans-logo.svg" class="footer-nexans" alt="Nexans">
-  </div>
-  <p>&copy; 2026 QICC — A Nexans Company &nbsp;|&nbsp; All applications run independently in-browser</p>
+  <p>&copy; 2026 QICC Production &nbsp;|&nbsp; All applications run independently in-browser</p>
 </footer>
 
 <script>

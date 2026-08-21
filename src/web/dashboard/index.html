@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head>
-<meta charset="utf-8"><script src="/gate.js?v=4"></script><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><script src="/gate.js?v=5"></script><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Production Analysis · Live Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
 <style>
@@ -367,7 +367,6 @@ table.rt.rt-oee-cmp tr.row-on-target td.mcn2{background:rgba(46,158,91,.12)}
 </div>
 <nav id="mainNav" class="">
   <div class="brand"><span class="dot"></span>
-    <img class="nxlogo" src="/nexans-logo.svg" alt="Nexans">
     <span class="brandsub"><b>PRODUCTION</b></span></div>
   <div class="navwrap">
     <div class="tabs" id="tabs"><button class="on" onclick="go('overview')">Overview</button><button class="" onclick="go('daily')">Daily Report</button><button class="" onclick="go('report')">Machine Report</button><button class="" onclick="go('oee')">OEE &amp; Runtime</button><button class="" onclick="go('scrap')">Scrap</button></div>
@@ -3723,8 +3722,7 @@ function exportDailyHTML(){
 <div class="bgdeco" aria-hidden="true"><svg viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="nxswoosh" x1="0" y1="1" x2="0.75" y2="0"><stop offset="0" stop-color="#FFB3B3" stop-opacity="0"/><stop offset="0.42" stop-color="#FF6B6B" stop-opacity="0.72"/><stop offset="1" stop-color="#E60000"/></linearGradient></defs><path d="M85 700 C85 330 205 165 330 165 C455 165 555 330 585 700" fill="none" stroke="url(#nxswoosh)" stroke-width="150" stroke-linecap="round"/></svg></div>
 <div class="stage">
   <div class="rpt-header"><div class="rpt-brand" style="display:flex;align-items:center;gap:12px">
-    <img style="height:22px;width:auto;display:block" src="/nexans-logo.svg" alt="Nexans">
-    <span style="font-size:16.0px;color:var(--muted);border-left:1px solid var(--line);padding-left:12px"><b style="color:var(--red)">Production</b> Performance Dashboard</span></div>
+    <span style="font-size:16.0px;color:var(--muted)"><b style="color:var(--red)">Production</b> Performance Dashboard</span></div>
     <div class="rpt-meta">${reportKind} REPORT<br>${dateStr}<br>Generated ${new Date().toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'numeric'})}</div></div>
   ${clone.outerHTML}
 </div>
