@@ -1,8 +1,12 @@
 {
   "routes": [
+    { "route": "/traceability", "redirect": "/metallurgy", "statusCode": 301 },
+    { "route": "/traceability/*", "redirect": "/metallurgy/*", "statusCode": 301 },
+    { "route": "/trials", "redirect": "/production-trials", "statusCode": 301 },
+    { "route": "/trials/*", "redirect": "/production-trials/*", "statusCode": 301 },
     { "route": "/dashboard", "rewrite": "/dashboard/index.html" },
-    { "route": "/traceability", "rewrite": "/traceability/index.html" },
-    { "route": "/trials", "rewrite": "/trials/index.html" },
+    { "route": "/metallurgy", "rewrite": "/metallurgy/index.html" },
+    { "route": "/production-trials", "rewrite": "/production-trials/index.html" },
     { "route": "/material-consumption", "rewrite": "/material-consumption/index.html" },
     { "route": "/skill-matrix", "rewrite": "/skill-matrix/index.html" },
     { "route": "/setup-scrap", "rewrite": "/setup-scrap/index.html" },
@@ -10,7 +14,7 @@
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/api/*", "/dashboard/*", "/traceability/*", "/trials/*", "/material-consumption/*", "/skill-matrix/*", "/setup-scrap/*", "/ccv/*", "/*.{png,jpg,gif,css,js,ico,svg,woff,woff2,json}"]
+    "exclude": ["/api/*", "/dashboard/*", "/metallurgy/*", "/production-trials/*", "/material-consumption/*", "/skill-matrix/*", "/setup-scrap/*", "/ccv/*", "/*.{png,jpg,gif,css,js,ico,svg,woff,woff2,json}"]
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",

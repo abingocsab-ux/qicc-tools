@@ -74,7 +74,7 @@ def azure_password() -> str:
     raw = subprocess.check_output(
         [
             AZ, "staticwebapp", "appsettings", "list",
-            "-g", "rg-qicc-tools", "-n", "qicc-tools",
+            "-g", "rg-qicc-tools", "-n", "qicc-production",
             "--query", "properties.DATABASE_URL", "-o", "tsv",
         ],
         text=True,

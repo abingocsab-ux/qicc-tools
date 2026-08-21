@@ -2,6 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
+<script src="/gate.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Material Consumption Monitor &amp; Navision Reconciliation</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -253,11 +254,56 @@ svg{display:block;max-width:100%;overflow:visible}
 </div>
 <div class="tt" id="tt"></div>
 
-<script type="module">
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-const SUPABASE_URL = 'https://rwckyucnahinoeoqmrea.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_dHhxhKPrm5y34vnJutLJuA_j40E-wmx';
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+<script>
+const DATA_API = '/api/copper';
+
+function azureFrom(table){
+  const st = { method:'GET', sel:'*', filters:[], order:[], lim:null, off:null, body:null, conflict:null, want:'many' };
+  const qs = () => {
+    const p = new URLSearchParams();
+    if (st.sel) p.set('select', st.sel);
+    for (const [k,v] of st.filters) p.set(k, v);
+    if (st.order.length) p.set('order', st.order.join(','));
+    if (st.lim != null) p.set('limit', String(st.lim));
+    if (st.off != null) p.set('offset', String(st.off));
+    if (st.conflict) p.set('on_conflict', st.conflict);
+    return p.toString();
+  };
+  const run = async () => {
+    const url = DATA_API+'/'+table+(qs()?'?'+qs():'');
+    const opts = { method: st.method, headers: { 'Content-Type':'application/json', Accept:'application/json' } };
+    if (st.body != null && st.method !== 'GET' && st.method !== 'DELETE') opts.body = JSON.stringify(st.body);
+    const r = await fetch(url, opts);
+    if (st.method === 'DELETE') return { data: r.ok ? [] : null, error: r.ok ? null : { message: 'delete failed '+r.status } };
+    let rows = [];
+    try { rows = await r.json(); } catch(e) { rows = []; }
+    if (!r.ok) return { data: null, error: { message: (rows && rows.message) || ('query failed '+r.status) } };
+    if (!Array.isArray(rows)) rows = rows ? [rows] : [];
+    if (st.want === 'single') {
+      if (rows.length === 1) return { data: rows[0], error: null };
+      return { data: null, error: { message: rows.length ? 'More than one row' : 'No row found' } };
+    }
+    if (st.want === 'maybe') return { data: rows[0] || null, error: null };
+    return { data: rows, error: null };
+  };
+  const api = {
+    select(s){ st.sel = s; return api; },
+    eq(c,v){ st.filters.push([c, 'eq.'+v]); return api; },
+    in(c,arr){ st.filters.push([c, 'in.('+(arr||[]).join(',')+')']); return api; },
+    order(c,o){ st.order.push(c+((o&&o.ascending===false)?'.desc':'.asc')); return api; },
+    limit(n){ st.lim = n; return api; },
+    range(a,b){ st.off=a; st.lim=b-a+1; return api; },
+    maybeSingle(){ st.want='maybe'; return api; },
+    single(){ st.want='single'; return api; },
+    insert(body){ st.method='POST'; st.body=body; return api; },
+    update(body){ st.method='PATCH'; st.body=body; return api; },
+    upsert(body, o){ st.method='POST'; st.body=body; st.conflict=o&&o.onConflict; return api; },
+    delete(){ st.method='DELETE'; return api; },
+    then(res,rej){ return run().then(res,rej); },
+  };
+  return api;
+}
+const sb = { from: azureFrom };
 
 const S = { items:[], item:null, products:[], runs:[], model:null, snaps:[], ledger:[], mats:[], thk:[],
             tab:'dash', canEdit:false, user:null, sixRun:'all', sixStat:'thk_ave', sumRunId:null, sumGroupBase:null };
@@ -3724,22 +3770,13 @@ function render(){
   catch(err){ app.append(el('div',{class:'card'},el('h2',{},'Something went wrong on this tab'),
     el('div',{class:'note crit'},String(err&&err.message||err)))); console.error(err); }
 }
-async function start(session){
-  S.user=session.user; $('#who').textContent=session.user.email; $('#outBtn').classList.remove('hide');
-  const {data:p}=await sb.from('profiles').select('role').eq('id',session.user.id).maybeSingle();
-  S.canEdit = p?.role==='editor';
+async function start(){
+  S.canEdit = true;
+  const who=$('#who'); if(who) who.textContent='rbasco36@gmail.com';
   await loadAll();
   $('#boot').classList.add('hide'); $('#login').classList.add('hide'); $('#app').classList.remove('hide');
   render();
 }
-$('#inBtn').onclick=async()=>{
-  const m=$('#loginMsg'); m.textContent='Signing in…'; m.className='small muted';
-  const {data,error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
-  if(error){m.textContent=error.message;m.className='err';return;}
-  start(data.session);
-};
-$('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')$('#inBtn').click();});
-$('#outBtn').onclick=async()=>{await sb.auth.signOut();location.reload();};
 $('#printBtn').onclick=()=>{
   // print the tab that is on screen; force light so it does not burn a cartridge
   const was=document.documentElement.getAttribute('data-theme');
@@ -3757,9 +3794,7 @@ $('#themeBtn').onclick=()=>{
   if(S.runs.length) render();
 };
 (async()=>{
-  const {data:{session}}=await sb.auth.getSession();
-  if(session) start(session);
-  else { $('#boot').classList.add('hide'); $('#login').classList.remove('hide'); }
+  await start();
 })();
 </script>
 </body>

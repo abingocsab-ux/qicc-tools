@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script src="/gate.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QICC-PRODUCTION PLATFORM</title>
+<title>QICC Production Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -261,15 +262,11 @@ footer p{text-align:center;color:var(--dim);font-size:.8rem}
   </section>
 </div>
 
-<!-- ═══ TAB: Manage Apps (behind login) ═══ -->
+<!-- ═══ TAB: Manage Apps ═══ -->
 <div class="tab-view" id="viewManage">
   <section class="manage-section">
     <div class="manage-header">
       <h2>Manage Applications</h2>
-      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
-        <span class="signed-in-as" id="signedInAs"></span>
-        <button class="btn btn-outline" onclick="logoutManage()" style="font-size:.82rem;padding:8px 18px">Sign Out</button>
-      </div>
     </div>
 
     <h3 style="font-family:var(--display);font-size:1rem;color:var(--muted);margin-bottom:1rem">All Applications</h3>
@@ -326,24 +323,6 @@ footer p{text-align:center;color:var(--dim);font-size:.8rem}
   </section>
 </div>
 
-<!-- Login Modal -->
-<div class="modal-overlay" id="loginModal">
-  <div class="modal">
-    <span class="lock-icon">🔐</span>
-    <h2>Sign In</h2>
-    <p class="modal-sub">Sign in to manage applications</p>
-    <div class="error-msg" id="loginError"></div>
-    <input type="email" id="loginEmail" placeholder="rbasco36@gmail.com" autocomplete="username"
-           onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
-    <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password"
-           onkeydown="if(event.key==='Enter')verifyLogin()">
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeLoginModal()">Cancel</button>
-      <button class="btn btn-primary" id="loginBtn" onclick="verifyLogin()">Sign In</button>
-    </div>
-  </div>
-</div>
-
 <!-- FOOTER -->
 <footer>
   <div class="footer-brand">
@@ -354,26 +333,19 @@ footer p{text-align:center;color:var(--dim);font-size:.8rem}
   <p>&copy; 2026 QICC — A Nexans Company &nbsp;|&nbsp; All applications run independently in-browser</p>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════
    QICC Production Platform — Suite Landing Page
-   Data layer: Supabase (public.suite_apps) with localStorage cache
+   Data layer: Azure Postgres (suite_apps) with localStorage cache
    fallback so the page still renders if the network is unavailable.
    ═══════════════════════════════════════════════════════════════ */
 
 // ─── Config ───────────────────────────────────────────────────────
-const SUPABASE_URL='https://rwckyucnahinoeoqmrea.supabase.co';
-const SUPABASE_KEY='sb_publishable_dHhxhKPrm5y34vnJutLJuA_j40E-wmx';
-const CACHE_KEY='qicc_suite_apps_cache';
+const CACHE_KEY='qicc_suite_apps_cache_v3';
 const THEME_KEY='qicc_suite_theme';
 
-let sb=null;
-try{ sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){ console.error('Supabase init failed',e); }
-
-let APPS=[];            // current in-memory app list
-let currentUser=null;   // signed-in Supabase user, or null
-let isEditor=false;     // true when profiles.role = 'editor'
+let APPS=[];
+let isEditor=true;
 let selectedIcon='📦';
 
 // ─── Small utilities ──────────────────────────────────────────────
@@ -405,6 +377,10 @@ function normalizeUrl(raw){
   let u=(raw||'').trim();
   if(!u)return '';
   if(/^[\w-]+\.html?$/i.test(u))return u;
+  if(u.startsWith('/')){
+    if(!u.endsWith('/')&&!/\/[^/]*\.[a-z0-9]+$/i.test(u))u+='/';
+    return u;
+  }
   if(!/^https?:\/\//i.test(u))u='https://'+u.replace(/^\/+/,'');
   if(!u.endsWith('/')&&!/\/[^/]*\.[a-z0-9]+$/i.test(u))u+='/';
   return u;
@@ -439,108 +415,13 @@ function switchTab(tab){
   if(tab==='manage')renderManageList();
 }
 
-// ─── Authentication (Supabase Auth + profiles.role check) ─────────
-/**
- * Resolve the signed-in user and whether they hold the 'editor' role.
- * The role check is advisory for the UI only — RLS on suite_apps
- * enforces it independently on every write.
- */
-async function refreshSession(){
-  currentUser=null;
-  isEditor=false;
-  if(!sb)return;
-  try{
-    const{data:{session}}=await sb.auth.getSession();
-    if(!session)return;
-    currentUser=session.user;
-    const{data,error}=await sb.from('profiles').select('role').eq('id',currentUser.id).maybeSingle();
-    if(error)throw error;
-    isEditor=!!data&&data.role==='editor';
-  }catch(err){
-    console.error('Session check failed:',err);
-  }
-  updateAuthUI();
+function handleManageClick(){
+  switchTab('manage');
 }
 
-function updateAuthUI(){
-  const el=document.getElementById('signedInAs');
-  if(!el)return;
-  el.innerHTML=currentUser
-    ? 'Signed in as <b>'+esc(currentUser.email)+'</b>'
-    : '';
-  // Hide the add-app form from anyone who cannot actually write
-  const form=document.querySelector('.add-form');
-  if(form)form.style.display=isEditor?'':'none';
-}
-
-function showLoginError(msg){
-  const el=document.getElementById('loginError');
-  el.textContent=msg;
-  el.style.display='block';
-}
-
-async function handleManageClick(){
-  await refreshSession();
-  if(currentUser&&isEditor){switchTab('manage');return;}
-  if(currentUser&&!isEditor){
-    toast('Your account does not have edit permission.','error');
-    return;
-  }
-  document.getElementById('loginModal').classList.add('active');
-  document.getElementById('loginEmail').value='';
-  document.getElementById('loginPass').value='';
-  document.getElementById('loginError').style.display='none';
-  setTimeout(()=>document.getElementById('loginEmail').focus(),100);
-}
-
-async function verifyLogin(){
-  const email=document.getElementById('loginEmail').value.trim();
-  const password=document.getElementById('loginPass').value;
-  const btn=document.getElementById('loginBtn');
-
-  if(!email||!password){showLoginError('Enter both email and password.');return;}
-  if(!sb){showLoginError('Not connected to the server. Check your network.');return;}
-
-  btn.disabled=true;
-  btn.textContent='Signing in…';
-  try{
-    const{error}=await sb.auth.signInWithPassword({email,password});
-    if(error)throw error;
-
-    await refreshSession();
-    if(!isEditor){
-      await sb.auth.signOut();
-      currentUser=null;
-      showLoginError('This account does not have edit permission.');
-      return;
-    }
-    closeLoginModal();
-    switchTab('manage');
-    toast('Signed in as '+email,'success');
-  }catch(err){
-    console.error(err);
-    const msg=/invalid login credentials/i.test(err.message||'')
-      ? 'Incorrect email or password.'
-      : (err.message||'Sign-in failed.');
-    showLoginError(msg);
-    document.getElementById('loginPass').value='';
-    document.getElementById('loginPass').focus();
-  }finally{
-    btn.disabled=false;
-    btn.textContent='Sign In';
-  }
-}
-
-function closeLoginModal(){document.getElementById('loginModal').classList.remove('active');}
-document.getElementById('loginModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeLoginModal();});
-
-async function logoutManage(){
-  if(sb)await sb.auth.signOut();
-  currentUser=null;
-  isEditor=false;
-  updateAuthUI();
-  switchTab('apps');
-  toast('Signed out.');
+function closeLoginModal(){
+  const el=document.getElementById('loginModal');
+  if(el)el.classList.remove('active');
 }
 
 // ─── Icon picker ──────────────────────────────────────────────────
@@ -615,9 +496,7 @@ document.addEventListener('click',e=>{
   if(wrap&&!wrap.contains(e.target))document.getElementById('iconPickerDrop').classList.remove('open');
 });
 
-// ─── Data layer: Supabase with localStorage cache fallback ────────
-
-/** Load apps from Azure Postgres; fall back to cache, then Supabase. */
+/** Load apps from Azure Postgres; fall back to the local cache. */
 async function loadApps(){
   try{
     const r=await fetch('/api/copper/suite_apps?is_active=eq.true&order=sort_order.asc,created_at.asc');
@@ -633,23 +512,6 @@ async function loadApps(){
   }catch(err){
     console.error('Azure load failed:',err);
   }
-  if(sb){
-    try{
-      const{data,error}=await sb
-        .from('suite_apps')
-        .select('*')
-        .eq('is_active',true)
-        .order('sort_order',{ascending:true})
-        .order('created_at',{ascending:true});
-      if(error)throw error;
-      APPS=data||[];
-      try{localStorage.setItem(CACHE_KEY,JSON.stringify(APPS));}catch(e){}
-      setSyncStatus(true);
-      return;
-    }catch(err){
-      console.error('Supabase load failed:',err);
-    }
-  }
   try{
     const raw=localStorage.getItem(CACHE_KEY);
     APPS=raw?JSON.parse(raw):[];
@@ -657,26 +519,28 @@ async function loadApps(){
   setSyncStatus(false);
 }
 
-/** Insert a new app row. Requires a signed-in editor (also enforced by RLS). */
+/** Insert a new app row. */
 async function insertApp(payload){
-  if(!sb)throw new Error('Not connected to the database.');
-  if(!currentUser)throw new Error('You must be signed in.');
-  const{data,error}=await sb.from('suite_apps').insert(payload).select().single();
-  if(error)throw error;
-  return data;
+  const r=await fetch('/api/copper/suite_apps',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body:JSON.stringify(payload)
+  });
+  const rows=await r.json().catch(()=>null);
+  if(!r.ok)throw new Error((rows&&rows.message)||'Could not save the app');
+  return Array.isArray(rows)?rows[0]:rows;
 }
 
-/** Soft-delete an app (is_active = false). Built-ins are protected by RLS. */
+/** Soft-delete an app (is_active = false). */
 async function softDeleteApp(id){
-  if(!sb)throw new Error('Not connected to the database.');
-  if(!currentUser)throw new Error('You must be signed in.');
-  const{data,error}=await sb.from('suite_apps')
-    .update({is_active:false})
-    .eq('id',id)
-    .eq('is_builtin',false)
-    .select();
-  if(error)throw error;
-  if(!data||!data.length)throw new Error('Nothing was removed — you may not have permission.');
+  const r=await fetch('/api/copper/suite_apps?id=eq.'+encodeURIComponent(id)+'&is_builtin=eq.false',{
+    method:'PATCH',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body:JSON.stringify({is_active:false})
+  });
+  const rows=await r.json().catch(()=>null);
+  if(!r.ok)throw new Error((rows&&rows.message)||'Could not remove the app');
+  if(!rows||!rows.length)throw new Error('Nothing was removed.');
 }
 
 // ─── Rendering: Applications grid ─────────────────────────────────
@@ -691,7 +555,7 @@ function renderApps(){
 
   APPS.forEach(app=>{
     const url=normalizeUrl(app.url);
-    const isLocal=!/^https?:\/\//i.test(url);
+    const isLocal=!url.startsWith('/')&&!/^https?:\/\//i.test(url);
     const tagsHtml=(app.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('');
     const chip=isLocal
       ? '<div class="live-chip"><span class="dot" style="background:var(--dim);box-shadow:0 0 0 3px rgba(90,100,120,.2)"></span> LOCAL</div>'
@@ -827,8 +691,6 @@ document.addEventListener('keydown',e=>{
   buildIconGrid();
   await loadApps();
   renderApps();
-  // Restore an existing session so a returning editor isn't re-prompted
-  await refreshSession();
 })();
 </script>
 </body>

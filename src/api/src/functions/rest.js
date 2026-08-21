@@ -1,5 +1,6 @@
 const { app } = require("@azure/functions");
 const { Pool } = require("pg");
+const crypto = require("crypto");
 
 const IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 const JSONB_TABLES = new Set([
@@ -12,15 +13,15 @@ const TABLES = {
     "leftovers_backup_20260803", "prodlogs", "mroverrides", "settings", "machines",
     "machine_handbook", "setup_routing", "machine_daily_oee", "machine_daily_downtime_events",
     "mc_items", "mc_products", "mc_runs", "mc_run_items", "mc_run_materials",
-    "mc_thickness", "mc_nav_ledger", "mc_nav_snapshots", "mc_model", "ds_cables",
-    "ds_stages", "ds_conductors", "ds_bom",
+    "mc_thickness", "mc_nav_ledger", "mc_nav_snapshots", "mc_model", "mc_run_analysis",
+    "ds_cables", "ds_stages", "ds_conductors", "ds_bom", "operator_competency_summary",
   ]),
   qicc: new Set([
     "prod_dashboard_live", "prod_oee_cmp_comments", "profiles", "tr_reports",
     "tr_photos", "tr_attachments", "tr_samples", "tr_options", "tr_signatures",
     "mc_items", "mc_products", "mc_runs", "mc_run_items", "mc_run_materials",
-    "mc_thickness", "mc_nav_ledger", "mc_nav_snapshots", "mc_model", "ds_cables",
-    "ds_stages", "ds_conductors", "ds_bom",
+    "mc_thickness", "mc_nav_ledger", "mc_nav_snapshots", "mc_model", "mc_run_analysis",
+    "ds_cables", "ds_stages", "ds_conductors", "ds_bom", "tr_report_summary",
   ]),
 };
 
@@ -61,6 +62,40 @@ function unwrapRows(table, rows) {
   });
 }
 
+function isWrappedJsonb(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  const keys = Object.keys(row);
+  return (
+    row.data &&
+    typeof row.data === "object" &&
+    !Array.isArray(row.data) &&
+    keys.every((k) => k === "id" || k === "data" || k === "updated_at")
+  );
+}
+
+function wrapForWrite(table, rows) {
+  if (!JSONB_TABLES.has(table)) return rows;
+  return rows.map((row) => {
+    if (isWrappedJsonb(row)) {
+      return {
+        id: row.id,
+        data: row.data,
+        updated_at: row.updated_at || new Date().toISOString(),
+      };
+    }
+    if (row == null || row.id == null) {
+      const err = new Error("jsonb row missing id");
+      err.status = 400;
+      throw err;
+    }
+    return {
+      id: row.id,
+      data: row,
+      updated_at: row.updated_at || new Date().toISOString(),
+    };
+  });
+}
+
 function parseFilters(query) {
   const reserved = new Set(["select", "order", "limit", "offset", "on_conflict", "unwrap"]);
   const where = [];
@@ -75,6 +110,13 @@ function parseFilters(query) {
     } else if (value.startsWith("neq.")) {
       params.push(value.slice(4));
       where.push(`${col} <> $${params.length}`);
+    } else if (value.startsWith("in.(") && value.endsWith(")")) {
+      const items = value.slice(4, -1).split(",").map((s) => s.trim()).filter(Boolean);
+      if (items.length) {
+        const ph = items.map((_, i) => `$${params.length + i + 1}`);
+        params.push(...items);
+        where.push(`${col} IN (${ph.join(", ")})`);
+      }
     } else if (value === "is.null") {
       where.push(`${col} IS NULL`);
     } else if (value === "not.is.null") {
@@ -110,6 +152,83 @@ function json(status, body) {
   };
 }
 
+function sitePin() {
+  return String(process.env.SITE_PIN || "").trim();
+}
+
+function gateSecret() {
+  return process.env.JWT_SECRET || sitePin() || "qicc-gate";
+}
+
+function safeEqual(a, b) {
+  const x = Buffer.from(String(a));
+  const y = Buffer.from(String(b));
+  if (x.length !== y.length) return false;
+  return crypto.timingSafeEqual(x, y);
+}
+
+function makeGateToken() {
+  const exp = String(Date.now() + 12 * 60 * 60 * 1000);
+  const sig = crypto.createHmac("sha256", gateSecret()).update(exp).digest("hex");
+  return exp + "." + sig;
+}
+
+function validGateToken(token) {
+  if (!token || typeof token !== "string") return false;
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const exp = Number(parts[0]);
+  if (!Number.isFinite(exp) || Date.now() > exp) return false;
+  const sig = crypto.createHmac("sha256", gateSecret()).update(parts[0]).digest("hex");
+  return safeEqual(sig, parts[1]);
+}
+
+function cookieValue(request, name) {
+  try {
+    if (request.cookies && typeof request.cookies.get === "function") {
+      const parsed = request.cookies.get(name);
+      if (parsed && parsed.value) return String(parsed.value);
+      if (typeof parsed === "string" && parsed) return parsed;
+    }
+  } catch (e) { /* ignore */ }
+  const raw = request.headers.get("cookie") || request.headers.get("Cookie") || "";
+  for (const part of raw.split(";")) {
+    const i = part.indexOf("=");
+    if (i < 1) continue;
+    if (part.slice(0, i).trim() === name) {
+      try { return decodeURIComponent(part.slice(i + 1).trim()); }
+      catch (err) { return part.slice(i + 1).trim(); }
+    }
+  }
+  return "";
+}
+
+function requestToken(request) {
+  const custom = request.headers.get("x-qicc-gate") || request.headers.get("X-Qicc-Gate") || "";
+  if (custom) return custom.trim();
+  const auth = request.headers.get("authorization") || request.headers.get("Authorization") || "";
+  if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+  return cookieValue(request, "qicc_gate");
+}
+
+function gateDenied(request) {
+  if (!sitePin()) return null;
+  if (validGateToken(requestToken(request))) return null;
+  return json(401, { message: "PIN required" });
+}
+
+function gateCookie(token) {
+  return {
+    name: "qicc_gate",
+    value: token,
+    maxAge: 12 * 60 * 60,
+    httpOnly: true,
+    secure: true,
+    sameSite: "Lax",
+    path: "/",
+  };
+}
+
 app.http("health", {
   methods: ["GET"],
   authLevel: "anonymous",
@@ -121,15 +240,54 @@ app.http("health", {
   }),
 });
 
+app.http("gate", {
+  methods: ["GET"],
+  authLevel: "anonymous",
+  route: "gate",
+  handler: async (request) => {
+    if (!sitePin()) return json(200, { ok: true, open: true });
+    if (validGateToken(requestToken(request))) return json(200, { ok: true });
+    return json(401, { ok: false });
+  },
+});
+
+app.http("unlock", {
+  methods: ["POST"],
+  authLevel: "anonymous",
+  route: "unlock",
+  handler: async (request) => {
+    if (!sitePin()) return json(200, { ok: true, open: true });
+    let body = {};
+    try { body = await request.json(); } catch (e) { body = {}; }
+    const entered = String((body && body.pin) || "").trim();
+    const pinHash = crypto.createHash("sha256").update(entered).digest();
+    const wantHash = crypto.createHash("sha256").update(sitePin()).digest();
+    if (!crypto.timingSafeEqual(pinHash, wantHash)) return json(401, { message: "Wrong PIN" });
+    const token = makeGateToken();
+    return {
+      status: 200,
+      jsonBody: { ok: true, token },
+      headers: { "Content-Type": "application/json" },
+      cookies: [gateCookie(token)],
+    };
+  },
+});
+
 app.http("rest", {
   methods: ["GET", "POST", "PATCH", "DELETE"],
   authLevel: "anonymous",
   route: "{db}/{table}",
   handler: async (request, context) => {
+    const blocked = gateDenied(request);
+    if (blocked) return blocked;
     const db = String(request.params.db || "");
     const table = String(request.params.table || "");
     if (!TABLES[db] || !TABLES[db].has(table)) {
       return json(404, { message: "Unknown table" });
+    }
+    const VIEWS = new Set(["mc_run_analysis", "tr_report_summary", "operator_competency_summary"]);
+    if (VIEWS.has(table) && request.method !== "GET") {
+      return json(405, { message: "View is read-only" });
     }
     let client;
     try {
@@ -166,8 +324,9 @@ app.http("rest", {
       }
 
       const body = await request.json();
-      const rows = Array.isArray(body) ? body : [body];
-      if (!rows.length) return json(400, { message: "Empty body" });
+      const incoming = Array.isArray(body) ? body : [body];
+      if (!incoming.length) return json(400, { message: "Empty body" });
+      const rows = wrapForWrite(table, incoming);
 
       if (request.method === "POST") {
         const cols = Object.keys(rows[0]).filter((c) => IDENT.test(c));
@@ -185,13 +344,17 @@ app.http("rest", {
             const updates = cols
               .filter((c) => !conflict.includes(c))
               .map((c) => `${qIdent(c)} = EXCLUDED.${qIdent(c)}`);
-            sql += ` ON CONFLICT (${conflict.map(qIdent).join(", ")}) DO UPDATE SET ${updates.join(", ")}`;
+            if (updates.length) {
+              sql += ` ON CONFLICT (${conflict.map(qIdent).join(", ")}) DO UPDATE SET ${updates.join(", ")}`;
+            } else {
+              sql += ` ON CONFLICT (${conflict.map(qIdent).join(", ")}) DO NOTHING`;
+            }
           }
           sql += " RETURNING *";
           const result = await client.query(sql, values);
-          inserted.push(result.rows[0]);
+          if (result.rows[0]) inserted.push(result.rows[0]);
         }
-        return json(201, inserted);
+        return json(201, unwrapRows(table, inserted));
       }
 
       if (request.method === "PATCH") {
@@ -205,11 +368,12 @@ app.http("rest", {
           `UPDATE ${rel} SET ${sets.join(", ")}${shifted.length ? ` WHERE ${shifted.join(" AND ")}` : ""} RETURNING *`,
           values,
         );
-        return json(200, result.rows);
+        return json(200, unwrapRows(table, result.rows));
       }
 
       return json(405, { message: "Method not allowed" });
     } catch (err) {
+      if (err && err.status === 400) return json(400, { message: err.message || "Bad request" });
       context.error(err);
       return json(500, { message: "Query failed" });
     } finally {

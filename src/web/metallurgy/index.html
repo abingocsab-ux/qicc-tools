@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script src="/gate.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Copper Traceability (Standalone) — localStorage · no cloud login</title>
+<title>Metallurgy — QICC</title>
 <style>
   :root{
     --bg:#F4F2EE; --panel:#fff; --ink:#191919; --sub:#666666; --line:#DFDEDA;
@@ -1342,7 +1343,7 @@ let fsReady=false;
 const deepEq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 
 window.__role='editor';
-window.__userEmail='standalone@local';
+window.__userEmail='rbasco36@gmail.com';
 window.__sb=null;
 window.__startSupabaseSync=function(){ /* no-op in standalone */ };
 window.doLogin=function(){};
@@ -1406,7 +1407,7 @@ async function loadState(){
     statusEl.style.color='var(--green)';
   }
   const who=document.getElementById('whoami');
-  if(who) who.textContent=fromAzure?'Azure copy · copper_traceability':'Standalone · this browser';
+  if(who) who.textContent=fromAzure?'rbasco36@gmail.com':'Standalone · this browser';
   renderAll();
   if(typeof renderReport==='function') renderReport();
   if(typeof renderCu==='function') renderCu();
@@ -1430,11 +1431,57 @@ function migrateTonToKg(){
   toast('Existing records converted from tons back to kilograms automatically');
 }
 
+const AZURE_TABLES={coils:'coils',draws:'draws',strands:'strands',armours:'armours',leftovers:'leftovers',prodlogs:'prodlogs',mroverrides:'mroverrides'};
+let azureSaveTimer=null;
+
 async function saveState(){
   invalidateIdx();
   if(!fsReady){ toast('Not ready yet — please wait a moment and try again'); return; }
   if(!writeLocal(state)) return;
   lastSynced=JSON.parse(JSON.stringify(state));
+  clearTimeout(azureSaveTimer);
+  azureSaveTimer=setTimeout(()=>{
+    pushAzure().catch(e=>{
+      console.warn('Azure metallurgy save failed', e);
+      toast('Saved on this PC — Azure sync failed');
+      const statusEl=document.getElementById('syncStatus');
+      if(statusEl){
+        statusEl.innerHTML='&#9679;&nbsp;local only — Azure sync failed';
+        statusEl.style.color='var(--amber)';
+      }
+    });
+  },800);
+}
+
+async function pushAzure(){
+  for(const [localName, table] of Object.entries(AZURE_TABLES)){
+    const rows=localName==='mrOverrides'?(state.mrOverrides||[]):(state[localName]||[]);
+    const keep=new Set(rows.map(r=>String(r.id)));
+    const er=await fetch('/api/copper/'+table+'?select=id');
+    if(!er.ok) throw new Error(table+' list '+er.status);
+    const existing=await er.json();
+    if(Array.isArray(existing)){
+      for(const row of existing){
+        if(row&&row.id!=null&&!keep.has(String(row.id))){
+          const d=await fetch('/api/copper/'+table+'?id=eq.'+encodeURIComponent(row.id),{method:'DELETE'});
+          if(!d.ok&&d.status!==204) throw new Error(table+' delete '+d.status);
+        }
+      }
+    }
+    if(rows.length){
+      const r=await fetch('/api/copper/'+table+'?on_conflict=id',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',Accept:'application/json'},
+        body:JSON.stringify(rows)
+      });
+      if(!r.ok) throw new Error(table+' upsert '+r.status);
+    }
+  }
+  const statusEl=document.getElementById('syncStatus');
+  if(statusEl){
+    statusEl.innerHTML='&#9679;&nbsp;Azure · '+state.coils.length+' coils';
+    statusEl.style.color='var(--green)';
+  }
 }
 
 // ================= helpers =================
