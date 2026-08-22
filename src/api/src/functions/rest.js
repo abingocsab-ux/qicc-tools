@@ -376,7 +376,8 @@ app.http("rest", {
     } catch (err) {
       if (err && err.status === 400) return json(400, { message: err.message || "Bad request" });
       context.error(err);
-      return json(500, { message: "Query failed" });
+      const detail = err && err.message ? String(err.message).split("\n")[0] : "Query failed";
+      return json(500, { message: detail });
     } finally {
       if (client) client.release();
     }
