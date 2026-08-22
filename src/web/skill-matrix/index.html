@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<script src="/gate.js?v=2"></script>
+<script src="/gate.js?v=5"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Production Skill Matrix 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -46,11 +46,11 @@ button{font-family:inherit;cursor:pointer}
 /* ---------- header ---------- */
 header{background:linear-gradient(120deg,#ffffff 0%,#f7f9fb 60%,#f0f3f7 100%);color:var(--ink);padding:14px 20px;display:flex;flex-wrap:wrap;align-items:center;gap:16px;border-bottom:1px solid var(--line)}
 .brand{display:flex;flex-direction:row;align-items:center;gap:14px}
-.brand-logo{background:#fff;border-radius:12px;padding:7px 12px;display:flex;align-items:center;box-shadow:0 1px 4px rgba(16,29,43,.1);border:1px solid var(--line-soft);flex-shrink:0}
-.brand-logo svg{height:52px;width:auto;display:block}
+.brand-logo{background:#fff;border-radius:12px;padding:4px;display:flex;align-items:center;box-shadow:0 1px 4px rgba(16,29,43,.1);border:1px solid var(--line-soft);flex-shrink:0}
+.brand-logo img,.brand-logo svg{height:52px;width:auto;display:block}
 .brand h1{font-size:20px;font-weight:800;letter-spacing:.5px;color:var(--ink)}
 .brand small{color:var(--ink-faint);font-size:11.5px;letter-spacing:.8px;text-transform:uppercase}
-@media(max-width:640px){.brand-logo svg{height:42px}.brand h1{font-size:17px}}
+@media(max-width:640px){.brand-logo img,.brand-logo svg{height:42px}.brand h1{font-size:17px}}
 .hdr-meta{margin-left:auto;display:flex;gap:18px;flex-wrap:wrap;align-items:center}
 .hdr-stat{text-align:right}
 .hdr-stat b{display:block;font-size:19px;font-family:var(--mono);color:var(--ink)}
@@ -542,13 +542,6 @@ nav button.active::after{content:"";position:absolute;left:14px;right:14px;botto
 
 <header>
   <div class="brand">
-    <span class="brand-logo" aria-label="QICC — A Nexans Company">
-      <svg viewBox="0 0 380 216" xmlns="http://www.w3.org/2000/svg" role="img">
-        <text x="190" y="110" text-anchor="middle" font-family="'Arial Black','Arial',sans-serif" font-weight="800" font-size="118" letter-spacing="0" fill="#E1231C">QICC</text>
-        <text x="190" y="156" text-anchor="middle" font-family="'Arial','Helvetica',sans-serif" font-weight="700" font-size="28" letter-spacing="1.2" fill="#1b1b1b">A NEXANS COMPANY</text>
-        <text x="190" y="196" text-anchor="middle" font-family="'Segoe UI','Noto Naskh Arabic','Tahoma',sans-serif" font-size="26" fill="#1b1b1b" direction="rtl">شركة قطر العالمية للكابلات</text>
-      </svg>
-    </span>
     <h1 id="brandTitle">Production Skill Matrix</h1>
   </div>
   <div class="hdr-meta">

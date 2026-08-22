@@ -2,7 +2,7 @@
 <html lang="en" class="light">
 <head>
 <meta charset="utf-8">
-<script src="/gate.js?v=2"></script>
+<script src="/gate.js?v=5"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#eef2f7">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1672,7 +1672,8 @@ function render() {
 
 function sideRail(active) {
   return `<nav class="siderail noprint">
-    <div class="brand"><b>Trial Run Reports</b><span>Process Dept</span></div>
+    <div class="brand">
+      <b>Trial Run Reports</b><span>Process Dept</span></div>
     <a class="nv ${active === 'list' ? 'on' : ''}" data-go="list">▤ &nbsp;All trials</a>
     <a class="nv" data-go="new">＋ &nbsp;New trial</a>
     <a class="nv" data-go="sigs">✒ &nbsp;Signatures</a>
@@ -1995,8 +1996,7 @@ function viewReport() {
     </div></div>` : ''}
 
     ${signBlock(r)}
-    <div class="rp-foot"><span>${esc(r.ref_no || '')}${formNoFor(r) ? ' &nbsp;·&nbsp; Form no. ' + esc(formNoFor(r)) : ''}</span>
-      <img class="qicc-logo" src="assets/qicc-logo.png" alt="QICC — A Nexans company"></div>
+    <div class="rp-foot"><span>${esc(r.ref_no || '')}${formNoFor(r) ? ' &nbsp;·&nbsp; Form no. ' + esc(formNoFor(r)) : ''}</span></div>
     ${annexureHTML()}
   </div>
   <div class="noprint" style="height:30px"></div>`;

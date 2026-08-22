@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
-<script src="/gate.js?v=2"></script>
+<script src="/gate.js?v=5"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Material Consumption Monitor &amp; Navision Reconciliation</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -31,13 +31,13 @@ body{margin:0;background:var(--plane);color:var(--ink-1);
 h1,h2,h3{margin:0;font-weight:650;letter-spacing:-0.01em}
 h2{font-size:15px} h3{font-size:13px}
 a{color:var(--s1)} button{font:inherit}
-.wrap{max-width:1320px;margin:0 auto;padding:0 20px 64px}
+.wrap{max-width:none;margin:0 auto;padding:0 16px 64px}
 header{position:sticky;top:0;z-index:50;background:var(--plane);border-bottom:1px solid var(--border);padding:12px 0 0}
-.hrow{max-width:1320px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hrow{max-width:none;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .brand{font-weight:680;font-size:15px;letter-spacing:-0.01em}
 .brand small{display:block;font-weight:450;font-size:11.5px;color:var(--ink-3);letter-spacing:0}
 .spacer{flex:1}
-.tabs{max-width:1320px;margin:10px auto 0;padding:0 20px;display:flex;gap:2px;overflow-x:auto}
+.tabs{max-width:none;margin:10px auto 0;padding:0 16px;display:flex;gap:2px;overflow-x:auto}
 .tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;padding:8px 12px;
   color:var(--ink-2);cursor:pointer;white-space:nowrap;font-size:13.5px;border-radius:6px 6px 0 0}
 .tab:hover{background:var(--surface-1);color:var(--ink-1)}
@@ -59,14 +59,20 @@ header{position:sticky;top:0;z-index:50;background:var(--plane);border-bottom:1p
 .btn:hover{border-color:var(--ink-3)}
 .btn.pri{background:var(--s1);border-color:var(--s1);color:#fff}
 .btn.pri:hover{filter:brightness(1.08)}
+.btn.sum{background:var(--s1);border-color:var(--s1);color:#fff}
+.btn.sum:hover{filter:brightness(1.08)}
+.btn.edit{background:var(--s2);border-color:var(--s2);color:#fff}
+.btn.edit:hover{filter:brightness(1.08)}
 .btn.sm{padding:4px 9px;font-size:12px} .btn.danger{color:var(--crit)}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 input,select,textarea{font:inherit;color:var(--ink-1);background:var(--surface-1);
   border:1px solid var(--border);border-radius:7px;padding:7px 9px;width:100%}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--s1);outline-offset:-1px;border-color:transparent}
-/* a field whose value was resolved from a typed sum (e.g. 20+20+20) carries a small dot in the
-   top-right corner; hover shows the breakdown. Signals the value is a computed total, not a raw entry. */
-input.has-calc{background-image:radial-gradient(circle at calc(100% - 5px) 6px, var(--s1) 0 3px, transparent 3.6px);cursor:help}
+/* a field whose value was resolved from a typed sum carries a small dot in the
+   top-right corner; the info icon next to it shows the breakdown (20 + 20 + 20 = 60). */
+input.has-calc{background-image:radial-gradient(circle at calc(100% - 5px) 6px, var(--s1) 0 3px, transparent 3.6px)}
+.calcwrap{display:flex;align-items:center;gap:5px;width:100%}
+.calcwrap>input{flex:1;min-width:0;width:auto}
 /* read-only, app-computed field (masterbatch BOM / expected) — visibly not for typing */
 input.derived{background:var(--plane);color:var(--ink-2);border-style:dashed;cursor:default}
 input.derived:focus{outline:none}
@@ -76,13 +82,20 @@ label{display:block;font-size:11.5px;color:var(--ink-2);margin-bottom:4px;font-w
 .inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .inline label{margin:0}
 .sel{width:auto;min-width:130px}
-table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{text-align:left;font-weight:600;color:var(--ink-2);font-size:10.5px;text-transform:uppercase;
-  letter-spacing:.04em;padding:7px 8px;border-bottom:1px solid var(--axis);white-space:nowrap}
-td{padding:8px;border-bottom:1px solid var(--grid);vertical-align:top}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;font-weight:600;color:var(--ink-2);font-size:10px;text-transform:uppercase;
+  letter-spacing:.03em;padding:5px 6px;border-bottom:1px solid var(--axis);white-space:nowrap}
+td{padding:5px 6px;border-bottom:1px solid var(--grid);vertical-align:top}
+table.rtable{width:max-content}
 tbody tr:hover{background:var(--plane)}
 th.n,td.n{text-align:right;font-variant-numeric:tabular-nums}
 .scroll{overflow-x:auto;margin:0 -16px;padding:0 16px}
+/* flip the overflow box so the horizontal scrollbar sits above the table, not under it */
+.scroll-top{transform:rotateX(180deg)}
+.scroll-top>*{transform:rotateX(180deg)}
+td.act .btn{white-space:nowrap}
+td.act,th.act{width:1%;white-space:nowrap;vertical-align:middle;padding-left:4px;padding-right:4px}
+td.act .btn.sm{padding:3px 7px;font-size:11px}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
   padding:2.5px 8px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
 .pill.good{color:var(--good-ink);border-color:color-mix(in srgb,var(--good) 40%,transparent)}
@@ -123,6 +136,13 @@ svg{display:block;max-width:100%;overflow:visible}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-start;
   justify-content:center;padding:36px 16px;overflow:auto}
 .modal .card{max-width:920px;width:100%}
+.modal.editor-modal{flex-direction:column;align-items:center;padding:20px 16px 0;overflow:hidden}
+.modal.editor-modal>.card{flex:1 1 auto;min-height:0;overflow:auto;border-bottom-left-radius:0;border-bottom-right-radius:0}
+.modal.editor-modal>.editfoot{position:static;max-width:920px;width:100%;flex:none;margin:0 0 12px;
+  padding:12px 16px 14px;border:1px solid var(--border);border-top:1px solid var(--border);
+  border-radius:0 0 var(--r) var(--r);z-index:7}
+.modal.warn-modal{z-index:260;align-items:center;justify-content:center}
+.modal.warn-modal .card{max-width:440px;flex:none}
 .rowline{display:grid;grid-template-columns:1.2fr 1.1fr .8fr .9fr .7fr auto;gap:8px;align-items:end;margin-bottom:8px}
 @media(max-width:820px){.rowline{grid-template-columns:1fr 1fr}}
 /* long product / thickness lists: bounded scroll with a frozen column header, and a Save bar
@@ -141,9 +161,9 @@ svg{display:block;max-width:100%;overflow:visible}
 .drop{border:1.5px dashed var(--axis);border-radius:10px;padding:26px;text-align:center;color:var(--ink-2);
   background:var(--plane);cursor:pointer}
 .drop:hover,.drop.over{border-color:var(--s1);color:var(--ink-1)}
-.itembar{display:flex;gap:6px;align-items:center}
+.itembar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .itembtn{appearance:none;border:1px solid var(--border);background:var(--surface-1);color:var(--ink-2);
-  padding:5px 11px;border-radius:999px;cursor:pointer;font-size:12.5px;font-weight:550}
+  padding:3px 8px;border-radius:999px;cursor:pointer;font-size:12px;font-weight:550}
 .itembtn[aria-pressed="true"]{background:var(--s1);border-color:var(--s1);color:#fff}
 
 /* ---------------- mobile ---------------- */
@@ -165,9 +185,10 @@ svg{display:block;max-width:100%;overflow:visible}
   .rowhead{display:none!important}
   .mlab{display:block;font-size:11px;color:var(--ink-2);margin-bottom:3px;font-weight:550}
   .chead h2{font-size:15px}
-  /* the run editor and other dialogs: full-screen sheets */
-  .modal{padding:0;align-items:stretch}
-  .modal .card{max-width:100%;width:100%;min-height:100%;border-radius:0;padding:14px 12px 40px}
+  /* the run editor: form scrolls, Save/Cancel/Delete stay pinned at the bottom */
+  .modal.editor-modal{padding:0;align-items:stretch}
+  .modal.editor-modal>.card{max-width:100%;width:100%;min-height:0;border-radius:0;padding:14px 12px 16px}
+  .modal.editor-modal>.editfoot{max-width:100%;margin:0;border-radius:0;border-left:0;border-right:0}
   /* wide data tables (Runs, CCV runs) become one card per row */
   table.rtable thead{display:none}
   table.rtable, table.rtable tbody{display:block;width:100%}
@@ -184,9 +205,13 @@ svg{display:block;max-width:100%;overflow:visible}
   table.rtable td.rhead{display:block;text-align:left;font-size:15px;font-weight:650;
     padding:0 0 8px;margin-bottom:4px;border-bottom:1px solid var(--grid)}
   table.rtable td.rhead::before{content:none}
-  /* Summary / Edit become full-width tap targets at the foot of the card */
-  table.rtable td.act{border-top:0;padding:8px 0 0}
-  table.rtable td.act .btn{width:100%;padding:9px;font-size:13px}
+  /* Summary / Edit sit under the run title, side by side */
+  table.rtable tr{display:flex;flex-wrap:wrap}
+  table.rtable td{width:100%}
+  table.rtable td.rhead{order:-2;width:100%}
+  table.rtable td.act{order:-1;width:50%;border-top:0;padding:4px 4px 8px;display:flex}
+  table.rtable td.act .btn{flex:1;padding:9px;font-size:13px;width:100%}
+  .scroll-top,.scroll-top>*{transform:none}
 }
 
 /* ---------------- print ---------------- */
@@ -194,6 +219,7 @@ svg{display:block;max-width:100%;overflow:visible}
   @page{ size:A4 landscape; margin:12mm 10mm; }
   body{background:#fff;font-size:9pt}
   header{position:static;border-bottom:1.5pt solid #000;padding-bottom:6pt;margin-bottom:8pt}
+  table.rtable td.act, table.rtable th.act{display:none!important}
   .tabs,.itembar,#themeBtn,#printBtn,#outBtn,#who,.btn,.tt,#login,#boot{display:none!important}
   .wrap{max-width:none;padding:0}
   .card{border:.6pt solid #cfcdc6;box-shadow:none;break-inside:avoid;page-break-inside:avoid}
@@ -201,6 +227,7 @@ svg{display:block;max-width:100%;overflow:visible}
   .banner{break-inside:avoid}
   table{font-size:7.6pt} th{font-size:6.8pt} td,th{padding:3pt 4pt}
   .scroll{overflow:visible!important;margin:0;padding:0}
+  .scroll-top,.scroll-top>*{transform:none}
   svg{max-width:100%}
   .note{break-inside:avoid}
   a{text-decoration:none;color:inherit}
@@ -229,7 +256,7 @@ svg{display:block;max-width:100%;overflow:visible}
 <header>
   <div class="hrow">
     <div class="brand">Material Consumption Monitor
-      <small>Run-by-run material balance, Navision reconciliation &amp; sheath capability</small></div>
+      <small>Run-by-run material balance, Navision reconciliation &amp; sheath capability &middot; build 2026-08-18</small></div>
     <div class="spacer"></div>
     <div class="itembar" id="itembar"></div>
     <span id="who" class="small muted"></span>
@@ -318,6 +345,10 @@ const num = (v,d=0)=> (v===null||v===undefined||v===''||isNaN(v)) ? '—'
   : Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 const pct = (v,d=2)=> (v===null||v===undefined||isNaN(v)) ? '—' : (Number(v)>0?'+':'')+Number(v).toFixed(d)+'%';
 const sgn = (v,d=0)=> (v===null||v===undefined||isNaN(v)) ? '—' : (Number(v)>0?'+':'')+num(v,d);
+/* vs BOM: + = saving (used less than the recipe), − = overconsumption (used more).
+   Stored variance_pct is already (expected − actual) / expected. */
+const overPctVal = r => (r && +r.expected_kg>0 && r.variance_pct!=null && !isNaN(r.variance_pct)) ? +r.variance_pct : null;
+const overCls = v => (v===null||v===undefined||isNaN(v)) ? '' : (Number(v)<0?'neg':'pos');
 const dt  = s => s ? new Date(s).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
 const dtl = s => s ? new Date(s).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
 const N = v => (v===null||v===undefined||v==='') ? null : Number(v);
@@ -338,38 +369,57 @@ function fmtExpr(s){
   return String(s).trim().replace(/^=/,'').trim()
     .replace(/\s+/g,'').replace(/(\d)([+\-*/])(?=[\d.(])/g,'$1 $2 ');
 }
+function setCalcLook(n, expr, val){
+  const hist=n.parentElement?.querySelector(':scope > .ibtn.hist');
+  if(expr){
+    n.dataset.calcExpr=expr; n.dataset.calcVal=String(val);
+    n.classList.add('has-calc');
+    if(hist){ hist.classList.remove('hide'); hist._expr=expr; hist._val=String(val); }
+  } else {
+    delete n.dataset.calcExpr; delete n.dataset.calcVal;
+    n.classList.remove('has-calc');
+    if(hist){ hist.classList.add('hide'); hist._expr=null; hist._val=null; }
+  }
+}
 function calcInput(attrs={}){
-  const a=Object.assign({type:'text',inputmode:'decimal',autocomplete:'off',placeholder:'e.g. 20+20+20'},attrs);
+  const saved=attrs.expr; delete attrs.expr;
+  delete attrs.placeholder;   // empty boxes stay empty — examples look like real data
+  const a=Object.assign({type:'text',inputmode:'decimal',autocomplete:'off'},attrs);
   a.value = a.value===null||a.value===undefined?'':a.value;
   const n=el('input',a);
-  /* On blur a typed sum (20+20+20) resolves to its total (60), exactly as before — but the
-     original breakdown is now remembered on the element and revealed on hover, so the operator
-     can see what the total was made of instead of only the collapsed number. */
+  const hist=el('span',{class:'ibtn hist hide',tabindex:'0',role:'button','aria-label':'Entered as a sum'},'i');
+  hist.addEventListener('click',e=>{
+    e.stopPropagation();
+    if(!hist._expr) return;
+    openInfoPop(hist, `<b>Entered as</b><br>${esc(hist._expr)} <b>= ${esc(hist._val)}</b>`);
+  });
+  hist.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); hist.click(); }});
+  /* On blur a typed sum resolves to its total. The original breakdown sits on the info
+     icon so you can reopen it later — like viewing the history of what was typed. */
   n.addEventListener('blur',e=>{
     const raw=String(e.target.value||'');
     const r=evalCalc(raw);
     if(r!=null){
       const resolved=Math.round(r*1000)/1000;
-      e.target.dataset.calcExpr=fmtExpr(raw);
-      e.target.dataset.calcVal=String(resolved);
       e.target.value=resolved;
-      e.target.title=fmtExpr(raw)+' = '+resolved;   // native fallback in case the custom tip is missed
-      e.target.classList.add('has-calc');
+      setCalcLook(e.target, fmtExpr(raw), resolved);
       e.target.dispatchEvent(new Event('input',{bubbles:true}));
     }
   });
-  /* If the operator edits the field by hand afterwards so it no longer equals the stored total,
-     the remembered breakdown is dropped — the tooltip must never show a stale sum. */
   n.addEventListener('input',e=>{
-    if(n.dataset.calcExpr && String(e.target.value).trim()!==n.dataset.calcVal){
-      delete n.dataset.calcExpr; delete n.dataset.calcVal; n.classList.remove('has-calc'); n.removeAttribute('title');
-    }
+    if(n.dataset.calcExpr && String(e.target.value).trim()!==n.dataset.calcVal)
+      setCalcLook(n, null);
   });
-  n.addEventListener('mousemove',ev=>{ if(n.dataset.calcExpr)
-    showTip(ev,`<b>Entered as a sum</b><br>${esc(n.dataset.calcExpr)} <b>= ${esc(n.dataset.calcVal)}</b>`); });
-  n.addEventListener('mouseleave',hideTip);
-  return n;
+  const wrap=el('span',{class:'calcwrap'});
+  wrap.append(n, hist);
+  Object.defineProperty(wrap,'value',{
+    get(){ return n.value; },
+    set(v){ n.value=v; if(n.dataset.calcExpr && String(v).trim()!==n.dataset.calcVal) setCalcLook(n, null); }
+  });
+  if(saved) setCalcLook(n, fmtExpr(saved), a.value);
+  return wrap;
 }
+function fieldExpr(id){ return $('#'+id)?.dataset?.calcExpr || null; }
 /* calendar date of a timestamp in the viewer's own timezone. Slicing an ISO string
    gives the UTC date, which lands a day early for anything before 03:00 local here. */
 const dayOf = ts => { if(!ts) return null; const d=new Date(ts); if(isNaN(d)) return null;
@@ -385,25 +435,23 @@ function showTip(e,html){ tt.innerHTML=html; tt.classList.add('on');
   tt.style.left=x+'px'; tt.style.top=Math.max(8,y)+'px'; }
 const hideTip=()=>tt.classList.remove('on');
 const tipify=(n,h)=>{ n.addEventListener('mousemove',e=>showTip(e,h)); n.addEventListener('mouseleave',hideTip); return n; };
-/* a small "i" that opens a definition/how-it-works popover — works on hover and on tap,
-   dismissed by clicking anywhere. Reused across the run editor and summaries. */
+/* a small "i" that opens a popover — works on hover and on tap, dismissed by clicking anywhere. */
+function openInfoPop(anchor, html){
+  const cur=document.querySelector('.ipop'); if(cur) cur.remove();
+  if(cur && cur._src===anchor) return;
+  const pop=el('div',{class:'ipop',html}); pop._src=anchor; document.body.append(pop);
+  const r=anchor.getBoundingClientRect();
+  let x=r.left, y=r.bottom+6;
+  if(x+pop.offsetWidth > innerWidth-10) x=innerWidth-pop.offsetWidth-10;
+  if(y+pop.offsetHeight > innerHeight-10) y=Math.max(8, r.top-pop.offsetHeight-6);
+  pop.style.left=Math.max(8,x)+'px'; pop.style.top=Math.max(8,y)+'px';
+  setTimeout(()=>document.addEventListener('click',function h(ev){
+    if(ev.target!==anchor){ pop.remove(); document.removeEventListener('click',h); }},{once:false}),0);
+}
 function infoBtn(html){
   const b=el('span',{class:'ibtn',tabindex:'0',role:'button','aria-label':'How this works'},'i');
-  const open=()=>{
-    const cur=document.querySelector('.ipop'); if(cur) cur.remove();
-    if(cur && cur._src===b){ return; }              // second click on same icon closes it
-    const pop=el('div',{class:'ipop',html}); pop._src=b; document.body.append(pop);
-    // position:fixed → use viewport coordinates so it aligns to the icon inside a fixed modal too
-    const r=b.getBoundingClientRect();
-    let x=r.left, y=r.bottom+6;
-    if(x+pop.offsetWidth > innerWidth-10) x=innerWidth-pop.offsetWidth-10;
-    if(y+pop.offsetHeight > innerHeight-10) y=Math.max(8, r.top-pop.offsetHeight-6); // flip above if no room below
-    pop.style.left=Math.max(8,x)+'px'; pop.style.top=Math.max(8,y)+'px';
-    setTimeout(()=>document.addEventListener('click',function h(ev){
-      if(ev.target!==b){ pop.remove(); document.removeEventListener('click',h); }},{once:false}),0);
-  };
-  b.addEventListener('click',e=>{ e.stopPropagation(); open(); });
-  b.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); }});
+  b.addEventListener('click',e=>{ e.stopPropagation(); openInfoPop(b, html); });
+  b.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openInfoPop(b, html); }});
   return b;
 }
 
@@ -473,7 +521,7 @@ function diagnose(r, ctx){
   if(r.scrap_missing){
     const implied=act*scrapRate;
     F.push({sev:'serious',code:'SCRAP_MISSING',kg:implied,title:'Scrap was not counted for this run',
-      detail:`Total Scrap was left blank, so every kilo of scrap is charged to consumption. At the ${(scrapRate*100).toFixed(1)}% rate measured on runs that did count it, roughly <b>${num(implied)} kg</b> of this run's "overconsumption" is uncounted scrap — about ${(implied/Math.max(exp,1)*100).toFixed(1)} points of the ${pct(r.variance_pct)} figure.`});
+      detail:`Total Scrap was left blank, so every kilo of scrap is charged to consumption. At the ${(scrapRate*100).toFixed(1)}% rate measured on runs that did count it, roughly <b>${num(implied)} kg</b> of this run's "overconsumption" is uncounted scrap — about ${(implied/Math.max(exp,1)*100).toFixed(1)} points of the ${pct(overPctVal(r))} figure.`});
   }
   if(r.phys_chain_gap!==null && Math.abs(+r.phys_chain_gap)>50){
     const g=+r.phys_chain_gap;
@@ -508,7 +556,7 @@ function diagnose(r, ctx){
       detail:`Measured average ${(+r.thk_actual_ave).toFixed(3)} mm against a ${(+r.thk_std_nom).toFixed(2)} mm nominal — ${pct(r.thickness_dev_pct)}, worth about ${num(exp*(+r.thickness_dev_pct/100))} kg on this run.`});
   } else if(r.thickness_dev_pct!==null && +r.thickness_dev_pct<-1 && +r.variance_pct<-3){
     F.push({sev:'info',code:'THICK_OK',title:'Thickness is not the cause here',
-      detail:`${wallWord()} averaged ${pct(r.thickness_dev_pct)} against nominal — the line was putting on <b>less</b> plastic than specified, yet the run still shows ${pct(r.variance_pct)}. Whatever is lost is not going onto the cable.`});
+      detail:`${wallWord()} averaged ${pct(r.thickness_dev_pct)} against nominal — the line was putting on <b>less</b> plastic than specified, yet the run still shows ${pct(overPctVal(r))} vs BOM. Whatever is lost is not going onto the cable.`});
   }
   /* ledger beats the WIP-balance inference whenever it has been imported */
   const gap = r.ledger_posting_gap_kg!==null ? +r.ledger_posting_gap_kg : (r.nav_posting_gap_kg!==null? +r.nav_posting_gap_kg : null);
@@ -532,10 +580,10 @@ function diagnose(r, ctx){
   let verdict;
   if(blocking) verdict={sev:'crit',label:'Not measurable',text:'The data problems above have to be fixed before this run’s variance means anything.'};
   else if(exp<=0) verdict={sev:'info',label:'No BOM',text:'No metres or BOM entered, so there is nothing to compare against.'};
-  else if(resid>tol) verdict={sev:'serious',label:'Real excess',
-    text:`${num(resid)} kg more than even the normal loss model predicts (${num(bm)} kg). This is real, investigable loss on top of the routine ${S.model.variable_uplift_pct}% + ${num(S.model.fixed_loss_kg)} kg.`};
-  else if(resid<-tol) verdict={sev:'good',label:'Beat the model',text:`${num(Math.abs(resid))} kg below the normal loss model — this run went well.`};
-  else verdict={sev:'good',label:'Normal',text:`Within ${(S.model&&S.model.tolerance_pct)||3}% of the established loss model. The gap to flat BOM is routine start-up and process loss, not a new problem.`};
+  else if(act>exp) verdict={sev:'serious',label:'Overconsumption',
+    text:`${num(act-exp)} kg above BOM (${pct((exp-act)/exp*100)}).`};
+  else verdict={sev:'good',label:'Saving',
+    text: act<exp ? `${num(exp-act)} kg under BOM (${pct((exp-act)/exp*100)}).` : 'On BOM.'};
   return {findings:F, verdict, bm, resid};
 }
 function enrich(){
@@ -555,9 +603,16 @@ function attachLedgerBalances(){
   S.runs.forEach(r=> r._navLed=null);
   if(!S.ledger || !S.ledger.length) return;
   const M=ledgerModel();
+  const byRun=new Map();
+  M.withBal.forEach(e=>{
+    if(e.run_id==null) return;
+    let a=byRun.get(e.run_id);
+    if(!a){ a=[]; byRun.set(e.run_id,a); }
+    a.push(e);
+  });
   S.runs.forEach(r=>{
-    const mine=M.withBal.filter(e=> e.run_id===r.id);
-    if(mine.length){
+    const mine=byRun.get(r.id);
+    if(mine && mine.length){
       r._navLed={ open:+(mine[0].balance) - (+mine[0].quantity), close:+mine[mine.length-1].balance,
         src:'entries', n:mine.length };
     } else {
@@ -631,7 +686,7 @@ function chartVariance(runs){
   const dropped=all.length-rs.length;
   if(!rs.length) return el('div',{class:'muted small'},'No measurable runs with a BOM yet.');
   const W=880,H=300,P={t:16,r:24,b:66,l:56}, iw=W-P.l-P.r, ih=H-P.t-P.b;
-  const vals=rs.map(r=>+r.variance_pct);
+  const vals=rs.map(r=>overPctVal(r)).filter(v=>v!==null);
   const {ticks,lo,hi}=niceTicks(Math.min(-25,...vals),Math.max(10,...vals),6);
   const y=v=>P.t+ih-(v-lo)/(hi-lo)*ih;
   const step=iw/rs.length, bw=Math.min(56, step*0.62);
@@ -639,14 +694,14 @@ function chartVariance(runs){
   ticks.forEach(t=>{ s.append(SE('line',{x1:P.l,x2:P.l+iw,y1:y(t),y2:y(t),stroke:t===0?'var(--axis)':'var(--grid)'}));
     s.append(TX(P.l-9,y(t)+3.5,t+'%',{'text-anchor':'end'})); });
   rs.forEach((r,i)=>{
-    const v=+r.variance_pct, cx=P.l+step*i+step/2, y0=y(0), y1=y(v);
-    const g=SE('g'); const col=v>=0?'var(--pos)':'var(--neg)';
+    const v=overPctVal(r)||0, cx=P.l+step*i+step/2, y0=y(0), y1=y(v);
+    const g=SE('g'); const col=v<0?'var(--neg)':'var(--pos)';
     g.append(SE('rect',{x:cx-bw/2,y:Math.min(y0,y1),width:bw,height:Math.max(2,Math.abs(y1-y0)),rx:4,fill:col,class:'bar'}));
     g.append(SE('rect',{x:cx-bw/2,y:v>=0?y0-4:y0,width:bw,height:4,fill:col,class:'bar'}));
     tipify(g,`<b>${esc(r.sheet_ref)} &middot; ${esc(r.sizes||'')}</b>
       <span class="k">Expected</span> ${num(r.expected_kg)} kg<br>
       <span class="k">Actual</span> ${num(r.actual_kg)} kg<br>
-      <span class="k">Variance</span> ${sgn(r.variance_kg)} kg (${pct(r.variance_pct)})<br>
+      <span class="k">vs BOM</span> ${sgn(r.variance_kg)} kg (${pct(v)})<br>
       <span class="k">Verdict</span> ${r._d.verdict.label}`);
     s.append(g);
     const short=r.sheet_ref.replace(/^FRH /,'').replace(/^CCV /,'').replace(/ · (ISC|INS|OSC)$/,'');
@@ -702,45 +757,6 @@ function chartWip(runs){
   if(ph.length) s.append(TX(x(ph[ph.length-1].t)+10, y(ph[ph.length-1].phys)+4,'Floor',{style:'fill:var(--s1);font-weight:650'}));
   s.append(TX(P.l,P.t+ih+22,dt(new Date(t0))));
   s.append(TX(P.l+iw,P.t+ih+22,dt(new Date(t1)),{'text-anchor':'end'}));
-  return s;
-}
-
-function chartModel(runs){
-  const use=runs.filter(r=>+r.expected_kg>0);
-  if(use.length<2) return el('div',{class:'muted small'},'Need at least two runs with a BOM.');
-  const W=880,H=340,P={t:16,r:24,b:44,l:66}, iw=W-P.l-P.r, ih=H-P.t-P.b;
-  const mx=Math.max(...use.map(r=>Math.max(+r.expected_kg,+r.actual_kg)))*1.06;
-  const {ticks,lo,hi}=niceTicks(0,mx,5);
-  const x=v=>P.l+(v-lo)/(hi-lo)*iw, y=v=>P.t+ih-(v-lo)/(hi-lo)*ih;
-  const s=SV(W,H);
-  ticks.forEach(t=>{
-    s.append(SE('line',{x1:P.l,x2:P.l+iw,y1:y(t),y2:y(t),stroke:'var(--grid)'}));
-    s.append(SE('line',{x1:x(t),x2:x(t),y1:P.t,y2:P.t+ih,stroke:'var(--grid)'}));
-    const f=hi>=10000?(t/1000).toFixed(0)+'t':num(t);
-    s.append(TX(P.l-9,y(t)+3.5,f,{'text-anchor':'end'}));
-    s.append(TX(x(t),P.t+ih+18,f,{'text-anchor':'middle'}));
-  });
-  s.append(SE('line',{x1:x(lo),y1:y(lo),x2:x(hi),y2:y(hi),stroke:'var(--axis)','stroke-width':2}));
-  s.append(SE('line',{x1:x(lo),y1:y(benchmark(lo)),x2:x(hi),y2:y(benchmark(hi)),stroke:'var(--s3)','stroke-width':2}));
-  s.append(TX(x(hi)-4,y(benchmark(hi))-10,'normal loss model',{'text-anchor':'end',style:'fill:var(--s3);font-weight:650'}));
-  s.append(TX(x(hi*0.66),y(hi*0.66)+34,'flat BOM — what the sheet compares to',{'text-anchor':'middle',style:'fill:var(--ink-3);font-weight:650'}));
-  const maxExp=Math.max(...use.map(r=>+r.expected_kg));
-  use.forEach(r=>{
-    const bad=r._d.verdict.sev==='crit', hot=r._d.verdict.sev==='serious';
-    const cx=x(+r.expected_kg), cy=y(+r.actual_kg), g=SE('g');
-    g.append(SE('circle',{cx,cy,r:7.5,fill:'var(--surface-1)'}));
-    g.append(SE('circle',{cx,cy,r:5.2,fill:bad?'var(--surface-1)':hot?'var(--crit)':'var(--s1)',
-      stroke:bad?'var(--crit)':'none','stroke-width':2}));
-    tipify(g,`<b>${esc(r.sheet_ref)}</b><span class="k">BOM says</span> ${num(r.expected_kg)} kg<br>
-      <span class="k">Model says</span> ${num(r._d.bm)} kg<br><span class="k">Actually used</span> ${num(r.actual_kg)} kg<br>
-      <span class="k">vs model</span> ${sgn(r._d.resid)} kg`);
-    s.append(g);
-    if(bad||hot||+r.expected_kg===maxExp)
-      s.append(TX(cx+11,cy+(bad?16:4), r.sheet_ref+(bad?' — record is wrong':hot?' — real excess':''),
-        {'text-anchor':'start',style:`font-weight:650;fill:${bad||hot?'var(--crit)':'var(--ink-2)'}`}));
-  });
-  s.append(TX(P.l+iw/2,H-6,'Expected by BOM',{'text-anchor':'middle'}));
-  s.append(TX(-(P.t+ih/2),14,'Actually consumed',{'text-anchor':'middle',transform:'rotate(-90)'}));
   return s;
 }
 
@@ -876,8 +892,8 @@ function chartHistogram(cap,LSL,USL,T,unit='mm'){
       fill:'none',stroke:'var(--ink-3)','stroke-width':1.5,opacity:.85}));
   }
   // spec lines, with labels staggered so they never collide
-  const marks=[[LSL,'var(--crit)','LSL '+(LSL??''),], [USL,'var(--crit)','USL '+(USL??'')],
-               [T,'var(--ink-2)','target '+(T??'')], [cap.mu,'var(--s3)','mean '+cap.mu.toFixed(3)]]
+  const marks=[[LSL,'var(--crit)','min '+(LSL??'')], [USL,'var(--crit)','max '+(USL??'')],
+               [T,'var(--ink-2)','ave '+(T??'')], [cap.mu,'var(--s3)','mean '+cap.mu.toFixed(3)]]
     .filter(m=>m[0]!=null).sort((a,b)=>a[0]-b[0]);
   let lastX=-1e9, tier=0;
   marks.forEach(([val,col,lab])=>{
@@ -901,7 +917,7 @@ function chartIMR(vals,labels,LSL,USL){
   const s=SV(W,H);
   ticks.forEach(t=>{ s.append(SE('line',{x1:P.l,x2:P.l+iw,y1:y(t),y2:y(t),stroke:'var(--grid)'}));
     s.append(TX(P.l-9,y(t)+3.5,t.toFixed(2),{'text-anchor':'end'})); });
-  const refs=[[LSL,'var(--crit)','LSL'],[USL,'var(--crit)','USL'],[UCL,'var(--s2)','UCL'],
+  const refs=[[LSL,'var(--crit)','min'],[USL,'var(--crit)','max'],[UCL,'var(--s2)','UCL'],
               [LCL,'var(--s2)','LCL'],[mu,'var(--ink-3)','mean']].filter(r=>r[0]!=null).sort((a,b)=>b[0]-a[0]);
   let lastY=-1e9;
   refs.forEach(([v,col,lab])=>{
@@ -969,7 +985,16 @@ function ledgerModel(){
   const opening = stated!=null ? stated - net : null;
   let bal = opening ?? 0;
   const withBal = L.map(l=>{ bal += +l.quantity; return {...l, balance: bal}; });
-  const balanceAt = d => (opening ?? 0) + L.filter(l=>l.posting_date<=d).reduce((a,l)=>a+ +l.quantity,0);
+  const balanceAt = d => {
+    if(!d || !withBal.length) return opening ?? 0;
+    let lo=0, hi=withBal.length-1, ans=-1;
+    while(lo<=hi){
+      const mid=(lo+hi)>>1;
+      if(withBal[mid].posting_date<=d){ ans=mid; lo=mid+1; }
+      else hi=mid-1;
+    }
+    return ans<0 ? (opening ?? 0) : withBal[ans].balance;
+  };
   // monthly movement
   const months=new Map();
   L.forEach(l=>{ const k=l.posting_date.slice(0,7);
@@ -1085,6 +1110,19 @@ function integrityChecks(M){
        detail:'The numbers typed onto the monitoring sheets agree with the posting-date ledger balance.'});
   return {checks:C, cmp};
 }
+function compoundLabel(i){
+  const d=i.description||i.item_no;
+  if(/FR Hydrocarbon/i.test(d)) return 'FR Hydro';
+  if(/ST2 Black/i.test(d)) return 'Black';
+  if(/ST2 Natural/i.test(d)) return 'Natural';
+  if(/HFFR/i.test(d) || i.item_no==='HFFR') return 'HFFR';
+  if(/\bTI\s*1\b/i.test(d) || i.item_no==='TI1') return 'TI1';
+  if(/Type\s*6/i.test(d) || i.item_no==='TYPE6-BLACK') return 'Type 6';
+  return d.replace(/^PVC\s+/i,'').replace(/\s+Natural$/i,'');
+}
+function isSt2Compound(i){
+  return /ST2/i.test(i.description||'') || /^ST2-/.test(i.item_no);
+}
 function renderTabs(){
   const n=$('#tabs'); n.innerHTML='';
   TABS.forEach(([k,l])=> n.append(el('button',{class:'tab',role:'tab','aria-selected':String(S.tab===k),
@@ -1092,17 +1130,22 @@ function renderTabs(){
   const b=$('#itembar'); b.innerHTML='';
   const pick=async it=>{ S.item=it; $('#app').innerHTML='<div class="card"><span class="muted">Loading…</span></div>';
     await loadItem(); render(); };
-  b.append(el('span',{class:'small muted',style:'margin:0 2px 0 0;font-weight:650'},'ST2'));
-  S.items.filter(i=>i.kind==='compound' && !i.item_no.startsWith('CCV-')).forEach(i=>
-    b.append(el('button',{class:'itembtn','aria-pressed':String(S.item&&S.item.id===i.id),
-      title:`${i.item_no} — ${i.description}`, onclick:()=>pick(i)},
-      i.description.replace('PVC ST2 ','').replace(' Natural','').replace('Hydrocarbon','Hydro'))));
+  const addBtn=i=> b.append(el('button',{class:'itembtn','aria-pressed':String(S.item&&S.item.id===i.id),
+    title:`${i.item_no} — ${i.description}`, onclick:()=>pick(i)}, compoundLabel(i)));
+  const sheath=S.items.filter(i=>i.kind==='compound' && !i.item_no.startsWith('CCV-'));
+  const st2=sheath.filter(isSt2Compound);
+  const other=sheath.filter(i=>!isSt2Compound(i));
+  if(st2.length){
+    b.append(el('span',{class:'small muted',style:'margin:0 2px 0 0;font-weight:650'},'ST2'));
+    st2.forEach(addBtn);
+  }
+  other.forEach(addBtn);
   // the CCV sheet covers all three materials in one pass, so it gets one button
   if(S.items.some(i=>i.item_no.startsWith('CCV-'))){
-    b.append(el('span',{class:'small muted',style:'margin:0 2px 0 8px;font-weight:650'},'CCV'));
+    b.append(el('span',{class:'small muted',style:'margin:0 2px 0 6px;font-weight:650'},'CCV'));
     b.append(el('button',{class:'itembtn','aria-pressed':String(isCombined()),
       title:'Inner semicon, insulation and outer semicon together, as the sheet records them',
-      onclick:()=>pick(CCV_ITEM)},'All three materials'));
+      onclick:()=>pick(CCV_ITEM)},'All three'));
   }
 }
 const sevPill=(sev,label)=>{
@@ -1133,13 +1176,12 @@ const scrapKgCell = r => {
     el('span',{class:'muted',style:'font-weight:400'},` (${(kg/(+r.expected_kg)*100).toFixed(1)}%)`));
 };
 
-/* compact opening/withdrawn/scrap/closing → actual vs expected balance, for one run's one material */
-/* flip=true for the CCV tabs, where "vs BOM" is shown as positive-means-over
-   everywhere else on the page (ST2 shows raw variance_pct, negative-means-over) */
-function runBalanceTable(r,flip=false){
+/* compact opening/withdrawn/scrap/closing → actual vs expected balance, for one run's one material.
+   vs BOM: + = saving (used less), − = overconsumption (used more). */
+function runBalanceTable(r){
   const row=(lab,val,cls,bold)=> el('tr',{style:bold?'font-weight:650':null},
     el('td',{},lab),el('td',{class:'n '+(cls||'')},val));
-  const vp = flip? -(+r.variance_pct) : +r.variance_pct;
+  const vp = overPctVal(r);
   const t=el('table',{style:'max-width:420px;margin:4px 0 10px'});
   t.append(el('tbody',{},
     row('Floor WIP — opening', num(r.phys_wip_open)),
@@ -1149,7 +1191,9 @@ function runBalanceTable(r,flip=false){
     row('Actual consumed', num(r.actual_kg), null, true),
     row('BOM expected', +r.expected_kg>0? num(r.expected_kg) : '—'),
     row('— of which on scrapped cable', scrapKgCell(r)),
-    row('vs BOM', +r.expected_kg>0? pct(vp) : '—', (+r.variance_kg)<0?'neg':'pos', true)));
+    row('vs BOM (kg)', +r.expected_kg>0? sgn(r.variance_kg)+' kg' : '—',
+        overCls(r.variance_kg), true),
+    row('vs BOM', vp!==null? pct(vp) : '—', overCls(vp), true)));
   return t;
 }
 
@@ -1177,6 +1221,53 @@ function runProductTable(r){
   return t;
 }
 
+/* ---------- masterbatch detail (mirrors the PVC balance + product tables) ----------
+   The auto-dosed masterbatch row is identified by its note; expected/actual/%/kg are read and
+   the per-size dose is reconstructed from the note × each product's BOM and metres. Returns null
+   when a run has no auto masterbatch, so nothing shows for compound-only runs. */
+function runMbDetail(r){
+  const auto=S.mats.filter(m=>m.run_id===r.id).find(m=>MB_AUTO_RE.test(m.note||''));
+  if(!auto) return null;
+  const actual=(auto.opening_kg==null||auto.closing_kg==null)?null:(+auto.opening_kg+(+auto.withdrawn_kg||0)-+auto.closing_kg);
+  const expected = auto.expected_kg==null? null : +auto.expected_kg;
+  const diff = (actual!=null&&expected!=null)? expected-actual : null;        // + = saving
+  const varPct = (actual!=null&&expected>0)? (expected-actual)/expected*100 : null; // + = saving, − = overconsumption
+  const pctBy=parseMbNote(auto.note||'');
+  const per=(r._items||[]).filter(i=>pctBy[i.size]!=null && +pctBy[i.size]>0).map(i=>{
+    const bom=+i.bom_kg_per_km||0, m=+i.metres||0, p=+pctBy[i.size], mbBom=bom*p/100;
+    return {size:i.size, pct:p, mbBom, metres:m, exp:mbBom*m/1000};
+  });
+  return {auto, actual, expected, diff, varPct, per};
+}
+function mbBalanceTable(mb){
+  const row=(lab,val,cls,bold)=> el('tr',{style:bold?'font-weight:650':null},
+    el('td',{},lab),el('td',{class:'n '+(cls||'')},val));
+  const t=el('table',{style:'max-width:420px;margin:4px 0 10px'});
+  t.append(el('tbody',{},
+    row('Opening', num(mb.auto.opening_kg)),
+    row('Withdrawn', num(mb.auto.withdrawn_kg)),
+    row('Closing', num(mb.auto.closing_kg)),
+    row('Actual used', mb.actual==null?'—':num(mb.actual,2), null, true),
+    row('Expected (dosed)', mb.expected==null?'—':num(mb.expected,2)),
+    row('vs BOM (kg)', mb.diff==null?'—':sgn(mb.diff,2)+' kg', overCls(mb.diff), true),
+    row('vs BOM', mb.varPct==null?'—':pct(mb.varPct), overCls(mb.varPct), true)));
+  return t;
+}
+function mbSizeTable(mb){
+  const t=el('table',{style:'max-width:640px;margin:4px 0 6px'});
+  t.append(el('thead',{},el('tr',{},
+    el('th',{},'Size / product'), el('th',{class:'n'},'MB %'), el('th',{class:'n'},'MB kg/km'),
+    el('th',{class:'n'},'Length (m)'), el('th',{class:'n'},'Expected kg'))));
+  const tb=el('tbody'); let te=0;
+  mb.per.forEach(x=>{ te+=x.exp;
+    tb.append(el('tr',{},
+      el('td',{},x.size||'—'), el('td',{class:'n'},num(x.pct,2)+'%'),
+      el('td',{class:'n'},num(x.mbBom,2)), el('td',{class:'n'},num(x.metres)), el('td',{class:'n'},num(x.exp,2)))); });
+  tb.append(el('tr',{style:'font-weight:650;border-top:2px solid var(--grid)'},
+    el('td',{},'Total'), el('td',{},''), el('td',{},''), el('td',{},''), el('td',{class:'n'},num(te,2))));
+  t.append(tb); return t;
+}
+
 /* ---------- dashboard ---------- */
 function viewDash(){
   const rs=S.runs.filter(isRun);
@@ -1197,22 +1288,22 @@ function viewDash(){
   out.append(el('div',{class:'grid tiles'},
     tile('Runs measurable',`${ok.length} of ${rs.length}`,
       rs.length-ok.length? `${rs.length-ok.length} excluded — the record itself is incomplete or wrong` : 'all runs usable'),
-    tile('Consumption vs BOM', okE? (okA>okE?'+':'')+((okA-okE)/okE*100).toFixed(2)+'%' : '—',
+    tile('Overconsumption', okE? pct((okE-okA)/okE*100) : '—',
       okE? `${num(Math.abs(okA-okE))} kg ${okA>okE?'above':'below'} BOM across ${ok.length} measurable runs` : 'no BOM data',
       (okA-okE)>0?'neg':'pos'),
-    tile('Runs genuinely over-consuming', `${realExcess.length} of ${ok.length}`,
-      realExcess.length? realExcess.map(r=>r.sheet_ref).join(', ') : 'every run sits on the normal loss curve',
+    tile('Runs overconsuming', `${realExcess.length} of ${ok.length}`,
+      realExcess.length? realExcess.map(r=>r.sheet_ref).join(', ') : 'no run used more than BOM',
       realExcess.length?'neg':'pos'),
     tile('Navision phantom WIP', phantom===null?'—':num(Math.abs(phantom))+' kg',
       S.ledger.length? `Ledger imported — ${S.ledger.length} entries reconciled` : 'Inferred from the WIP balance; import the ledger for the exact split','neg')
   ));
 
-  out.append(card('Variance against flat BOM, run by run',
-    'This is the chart your sheet produces today, and it is why the problem looks worse than it is. Flat BOM is not an achievable target for an extrusion line, so almost every bar is red by construction.',
+  out.append(card('vs BOM, run by run',
+    'Minus means more compound was used than the recipe. Red is overconsumption; green is saving.',
     chartVariance(rs),
     el('div',{class:'legend'},
-      el('span',{},el('i',{style:'background:var(--neg)'}),'Used more than BOM'),
-      el('span',{},el('i',{style:'background:var(--pos)'}),'Used less than BOM'))));
+      el('span',{},el('i',{style:'background:var(--neg)'}),'Overconsumption — used more than BOM'),
+      el('span',{},el('i',{style:'background:var(--pos)'}),'Saving — used less than BOM'))));
 
   out.append(card('Floor stock vs Navision WIP balance',
     'The shaded gap is stock Navision believes exists but nobody can find.',
@@ -1315,10 +1406,6 @@ function viewDiag(){
       {label:'Variable loss\n@'+m.variable_uplift_pct+'% of BOM', v:varTotal, note:'<br>Start-of-length over-thickness,<br>die over-delivery, drum leftovers'},
       {label:'Total excess\nover BOM', v:okA-okE, total:true, note:'<br>What you actually pay for'}])));
 
-  out.append(card('The loss model vs flat BOM',
-    'Each dot is a run. Grey is what your sheet measures against; green is what this line actually does. A solid red dot exceeded even the normal loss curve; a hollow one has a record that cannot be trusted.',
-    chartModel(S.runs.filter(isRun))));
-
   out.append(card('What to do, in order',null, el('ol',{class:'tight'},
     el('li',{},el('b',{},'Attack the start-of-length thickness bias first. '),
       `It is about half of all the sheath variation, on every product and both compounds — and it is repeatable, so it has a mechanical cause. Removing it takes Cpk from ~0.5 to over 1.0, which lets the line run on nominal instead of choosing between thick walls and under-minimum cable. Look at line-speed ramp at drum change, die and tip centering, and start-up melt temperature.`),
@@ -1348,7 +1435,7 @@ function runFindings(rs){
     const d=r._d;
     box.append(el('div',{style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 8px'},
       el('h3',{},`${r.sheet_ref} · ${r.sizes||'—'}`), sevPill(d.verdict.sev,d.verdict.label),
-      el('span',{class:'small muted mono'}, +r.expected_kg>0 ? `${pct(r.variance_pct)} vs BOM · ${sgn(d.resid)} kg vs model` : '')));
+      el('span',{class:'small muted mono'}, +r.expected_kg>0 ? `${pct(overPctVal(r))} vs BOM` : '')));
     box.append(el('div',{class:'note '+(d.verdict.sev==='crit'?'crit':d.verdict.sev==='good'?'good':d.verdict.sev==='info'?'':'warn'),html:d.verdict.text}));
     d.findings.forEach(f=> box.append(el('div',{style:'margin:8px 0 0;padding:9px 12px;border-left:2px solid var(--grid)'},
       el('div',{style:'margin-bottom:3px'}, sevPill(f.sev,f.title)),
@@ -1381,14 +1468,18 @@ function sizeCell(r){
 function viewRuns(){
   const t=el('table',{class:'rtable'});
   t.append(el('thead',{},el('tr',{},
-    ...['Run','Size','Started','Withdrawn','Scrap','Core scrap','Floor open→close','BOM exp.','Actual','vs BOM','vs model','NAV gap','Phantom','Verdict','','']
-      .map((h,i)=>el('th',{class:(i>=3&&i<=12)?'n':''},h)))));
+    ...['Summary','Edit','Run','Size','Started','Withdrawn','Scrap','Core scrap','Open→close','BOM exp.','Actual','vs BOM','NAV gap','Phantom','Verdict']
+      .map((h,i)=>el('th',{class: i<2?'act':(i>=4&&i<=13)?'n':''},h)))));
   const tb=el('tbody');
   S.runs.slice().reverse().forEach(r=>{
     const d=r._d, gapSrc=r.ledger_posting_gap_kg!==null;
     const gap=gapSrc? +r.ledger_posting_gap_kg : r.nav_posting_gap_kg;
     const sz=sizeCell(r); sz.setAttribute('data-label','Size');
     tb.append(el('tr',{},
+      el('td',{class:'act','data-label':''},
+        el('button',{class:'btn sm sum',onclick:()=>openRunSummary(r.id)},'Summary')),
+      el('td',{class:'act','data-label':''},
+        S.canEdit? el('button',{class:'btn sm edit',onclick:()=>openRun(r.id)},'Edit'):null),
       el('td',{class:'rhead'},el('b',{},r.sheet_ref), r.record_type!=='run'? el('div',{class:'small muted'},r.record_type.replace('_',' ')):null),
       sz,
       el('td',{class:'mono','data-label':'Started'},dt(r.started_at)),
@@ -1396,23 +1487,20 @@ function viewRuns(){
       el('td',{class:'n','data-label':'Scrap'}, r.scrap_kg===null? el('span',{class:'pill crit'},'blank') : num(r.scrap_kg)),
       el('td',{class:'n '+((+r.core_scrap_pct||0)>5?'neg':''),'data-label':'Core scrap'},
         r.core_scrap_pct===null? '—' : `${num(r.core_scrap_m)} m (${(+r.core_scrap_pct).toFixed(1)}%)`),
-      el('td',{class:'n','data-label':'Floor open→close'},`${num(r.phys_wip_open)} → ${num(r.phys_wip_close)}`),
+      el('td',{class:'n','data-label':'Open→close'},`${num(r.phys_wip_open)} → ${num(r.phys_wip_close)}`),
       el('td',{class:'n','data-label':'BOM exp.'},+r.expected_kg>0?num(r.expected_kg):'—'),
       el('td',{class:'n','data-label':'Actual'},num(r.actual_kg)),
-      el('td',{class:'n '+((+r.variance_kg)<0?'neg':'pos'),'data-label':'vs BOM'},+r.expected_kg>0?pct(r.variance_pct):'—'),
-      el('td',{class:'n '+((d.resid)>0?'neg':'pos'),'data-label':'vs model'},+r.expected_kg>0?sgn(d.resid):'—'),
+      el('td',{class:'n '+overCls(overPctVal(r)),'data-label':'vs BOM'},+r.expected_kg>0?pct(overPctVal(r)):'—'),
       el('td',{class:'n '+((+gap||0)<0?'neg':''),'data-label':'NAV gap'}, gap===null?'—':el('span',{title:gapSrc?'from the imported ledger':'inferred from the WIP balance'},sgn(gap)+(gapSrc?' ✓':''))),
       el('td',{class:'n neg','data-label':'Phantom'}, r.sys_var_close===null?'—':num(r.sys_var_close)),
-      el('td',{'data-label':'Verdict'},sevPill(d.verdict.sev,d.verdict.label)),
-      el('td',{class:'act','data-label':''}, el('button',{class:'btn sm',onclick:()=>openRunSummary(r.id)},'Summary')),
-      el('td',{class:'act','data-label':''}, S.canEdit? el('button',{class:'btn sm',onclick:()=>openRun(r.id)},'Edit'):null)));
+      el('td',{'data-label':'Verdict'},sevPill(d.verdict.sev,d.verdict.label))));
   });
   t.append(tb);
   return el('div',{},el('div',{class:'card'},
     el('div',{class:'chead',style:'margin-bottom:12px'},el('h2',{},'All records'),el('span',{style:'flex:1'}),
       S.canEdit? el('button',{class:'btn pri',onclick:()=>openRun(null)},'+ New run'):null),
-    el('div',{class:'scroll'},t),
-    el('div',{class:'note'},el('b',{},'vs model'),' is the number that matters — what the run used above the normal expected loss for a run of that size, so a small run is not punished for its start-up purge. A ',el('b',{},'✓'),' on the NAV gap means it came from the imported ledger rather than being inferred from the WIP balance.')));
+    el('div',{class:'scroll scroll-top'},t),
+    el('div',{class:'note'},el('b',{},'vs BOM'),' is (expected − actual) ÷ expected. A minus means more compound was used than the recipe (overconsumption); a plus is a saving. Verdict is Saving or Overconsumption. A ',el('b',{},'✓'),' on the NAV gap means it came from the imported ledger rather than being inferred from the WIP balance.')));
 }
 
 /* ============================ self-contained HTML run report ============================
@@ -1570,7 +1658,7 @@ const fBlock = f => `<div class="f ${f.sev}"><div class="t">${RHTML(f.title)}</d
 function ccvRunReport(g){
   const ref=g.base.replace(/^CCV /,'');
   const L=CCV_LAYERS.map(([k,name])=>({k,name,r:g.L[k],col:{ISC:RCOL.isc,INS:RCOL.ins,OSC:RCOL.osc}[k]})).filter(x=>x.r);
-  const vsBom=r=>-(+r.variance_pct);
+  const vsBom=r=>overPctVal(r);
   let h=`<div class="rule"></div><h1>CCV run summary — ${RHTML(ref)}</h1>
 <div class="meta">${RHTML(g.sizes||'')}${g.mr?' &middot; MR '+RHTML(g.mr):''}<br>
 ${RHTML(dt(g.started_at))} → ${RHTML(dt(g.stopped_at))} &middot; ${num(g.metres)} cable m &middot; ${g.cores??'?'} cores
@@ -1578,9 +1666,9 @@ ${RHTML(dt(g.started_at))} → ${RHTML(dt(g.stopped_at))} &middot; ${num(g.metre
 <div class="kpis">`;
   L.forEach(x=>{ const v=vsBom(x.r);
     h+=`<div class="kpi"><div class="l">${RHTML(x.name)}</div>
-<div class="v ${v>0?'neg':'pos'}">${+x.r.expected_kg>0?pct(v,2):'—'}</div>
+<div class="v ${overCls(v)}">${+x.r.expected_kg>0?pct(v,2):'—'}</div>
 <div class="s">${num(x.r.actual_kg)} kg used against ${num(x.r.expected_kg)} expected &middot; ${RHTML(x.r._d.verdict.label)}</div></div>`; });
-  h+=`</div><p class="mut" style="font-size:9.5pt">A positive percentage means more material was used than the recipe allows.</p>`;
+  h+=`</div><p class="mut" style="font-size:9.5pt">Minus means more material was used than the recipe. Verdict is Saving or Overconsumption.</p>`;
 
   h+=`<h2>Material balance</h2><table><thead><tr><th></th>${L.map(x=>`<th class="n">${RHTML(x.name)}</th>`).join('')}</tr></thead><tbody>`;
   const row=(lab,fn,em)=>{ h+=`<tr${em?' class="em"':''}><td>${lab}</td>`
@@ -1594,7 +1682,7 @@ ${RHTML(dt(g.started_at))} → ${RHTML(dt(g.stopped_at))} &middot; ${num(g.metre
   row('— of which on scrapped cable', r=>{ const kg=scrapMaterialKg(r);
     return kg===null?'—':`${num(kg)} <span class="mut">(${(kg/(+r.expected_kg)*100).toFixed(1)}%)</span>`; });
   h+=`<tr class="em"><td>vs BOM</td>`+L.map(x=>{ const v=vsBom(x.r);
-    return `<td class="n ${v>0?'neg':'pos'}">${+x.r.expected_kg>0?pct(v,2):'—'}</td>`; }).join('')+'</tr>';
+    return `<td class="n ${overCls(v)}">${+x.r.expected_kg>0?pct(v,2):'—'}</td>`; }).join('')+'</tr>';
   h+=`<tr><td>Verdict</td>`+L.map(x=>`<td class="n">${RHTML(x.r._d.verdict.label)}</td>`).join('')+'</tr></tbody></table>';
 
   h+=`<h2>Expected against actual</h2><figure>${svgBars(L.map(x=>({label:x.name,bars:[
@@ -1632,12 +1720,9 @@ ${RHTML(dt(g.started_at))} → ${RHTML(dt(g.stopped_at))} &middot; ${num(g.metre
   L.forEach(x=>{
     const rd=S.thk.filter(t=>t.run_id===x.r.id&&t.thk_ave!=null).sort((a,b)=>a.seq-b.seq);
     if(rd.length<2) return;
-    const p=S.products.find(pp=>pp.item_id===x.r.item_id&&pp.size===(x.r._items||[])[0]?.size);
     h+=`<h2>${RHTML(x.name)} — wall thickness by drum</h2><figure>${
-      svgReadings(rd.map(t=>({y:+t.thk_ave,color:x.col})),{xlab:'drum, in order',lines:[
-        p&&p.std_thk_nom!=null?{v:+p.std_thk_nom,name:'nominal',color:RCOL.mut}:null,
-        p&&p.std_thk_min!=null?{v:+p.std_thk_min,name:'minimum',color:RCOL.bad}:null].filter(Boolean)})}
-<figcaption>Average wall per drum, millimetres. Running above nominal puts material on the cable that the recipe does not pay for.</figcaption></figure>`;
+      svgReadings(rd.map(t=>({y:+t.thk_ave,color:x.col})),{xlab:'drum, in order',lines:thkSpecLines(specFor(x.r))})}
+<figcaption>Average wall per drum, millimetres. ${thkTargetCaption(specFor(x.r))} Running above target ave puts material on the cable that the recipe does not pay for.</figcaption></figure>`;
   });
 
   const seen=new Set(); let fh='';
@@ -1657,10 +1742,8 @@ function st2RunReport(r){
 <div class="meta">${RHTML(S.item.description||S.item.item_no)}${r.sizes?' &middot; '+RHTML(r.sizes):''}${r.machines?' &middot; '+RHTML(r.machines):''}<br>
 ${RHTML(dt(r.started_at))} → ${RHTML(dt(r.stopped_at))} &middot; core scrap ${r.core_scrap_pct===null?'—':`${num(r.core_scrap_m)} m (${(+r.core_scrap_pct).toFixed(1)}%)`}</div>
 <div class="kpis">
-<div class="kpi"><div class="l">vs BOM</div><div class="v ${(+r.variance_kg)<0?'neg':'pos'}">${+r.expected_kg>0?pct(r.variance_pct):'—'}</div>
+<div class="kpi"><div class="l">vs BOM</div><div class="v ${overCls(overPctVal(r))}">${+r.expected_kg>0?pct(overPctVal(r)):'—'}</div>
 <div class="s">${num(r.actual_kg)} kg used against ${num(r.expected_kg)} expected</div></div>
-<div class="kpi"><div class="l">vs normal loss model</div><div class="v ${d.resid>0?'neg':'pos'}">${+r.expected_kg>0?sgn(d.resid):'—'} kg</div>
-<div class="s">the figure that matters — a small run is not punished for its start-up purge</div></div>
 <div class="kpi"><div class="l">Verdict</div><div class="v">${RHTML(d.verdict.label)}</div>
 <div class="s">${RHTML(String(d.verdict.text||'').replace(/<[^>]*>/g,'').slice(0,120))}</div></div>
 </div>`;
@@ -1674,7 +1757,8 @@ ${(()=>{const ds=runDeclaredScrap(r); return ds?`<tr><td>Scrap declared in Navis
 <tr class="em"><td>Actual consumed</td><td class="n">${num(r.actual_kg)}</td></tr>
 <tr><td>BOM expected</td><td class="n">${+r.expected_kg>0?num(r.expected_kg):'—'}</td></tr>
 <tr><td>— of which on scrapped cable</td><td class="n">${sc===null?'—':`${num(sc)} <span class="mut">(${(sc/(+r.expected_kg)*100).toFixed(1)}%)</span>`}</td></tr>
-<tr class="em"><td>vs BOM</td><td class="n ${(+r.variance_kg)<0?'neg':'pos'}">${+r.expected_kg>0?pct(r.variance_pct):'—'}</td></tr>
+<tr class="em"><td>vs BOM (kg)</td><td class="n ${overCls(r.variance_kg)}">${+r.expected_kg>0?sgn(r.variance_kg)+' kg':'—'}</td></tr>
+<tr class="em"><td>vs BOM</td><td class="n ${overCls(overPctVal(r))}">${+r.expected_kg>0?pct(overPctVal(r)):'—'}</td></tr>
 </tbody></table>`;
 
   const items=(r._items||[]);
@@ -1691,11 +1775,10 @@ ${(()=>{const ds=runDeclaredScrap(r); return ds?`<tr><td>Scrap declared in Navis
       +`</tbody></table>`;
   }
 
-  h+=`<h2>Against BOM and against the loss model</h2><figure>${svgBars([{label:r.sheet_ref,bars:[
+  h+=`<h2>BOM expected against actual</h2><figure>${svgBars([{label:r.sheet_ref,bars:[
       {name:'BOM expected',value:+r.expected_kg,color:RCOL.exp},
-      {name:'Normal loss model',value:bm,color:'#c9a227'},
       {name:'Actually consumed',value:+r.actual_kg,color:RCOL.act}]}],{w:440,bw:66})}
-<figcaption>Flat BOM is not achievable on any run — the model adds the fixed per-run loss plus the normal uplift. Judge the run against the middle bar.</figcaption></figure>`;
+<figcaption>Kilograms. The gap between the two bars is this run's difference against BOM.</figcaption></figure>`;
 
   const ng=runNavGap(r);
   if(ng){
@@ -1711,18 +1794,38 @@ ${(()=>{const ds=runDeclaredScrap(r); return ds?`<tr><td>Scrap declared in Navis
 
   const rd=S.thk.filter(t=>t.run_id===r.id&&t.thk_ave!=null).sort((a,b)=>a.seq-b.seq);
   if(rd.length>1){
-    const p=S.products.find(pp=>pp.size===(r._items||[])[0]?.size);
-    h+=`<h2>Sheath thickness through the run</h2><figure>${
+    h+=`<h2>Sheath thickness through the run</h2>
+<p class="mut" style="font-size:9.5pt">${thkTargetCaption(specFor(r))}</p><figure>${
       svgReadings(rd.map(t=>({y:+t.thk_ave,color:t.position==='START'?RCOL.bad:RCOL.act})),
-        {xlab:'reading order — red = start of a length, blue = end',lines:[
-          p&&p.std_thk_nom!=null?{v:+p.std_thk_nom,name:'nominal',color:RCOL.mut}:null,
-          p&&p.std_thk_min!=null?{v:+p.std_thk_min,name:'min at point',color:RCOL.bad}:null].filter(Boolean)})}
+        {xlab:'reading order — red = start of a length, blue = end',lines:thkSpecLines(specFor(r))})}
 <figcaption>Average wall per reading, millimetres.${r.start_end_dev_pct!=null?` Starts run ${pct(r.start_end_dev_pct,1)} against ends.`:''}</figcaption></figure>`;
   }
 
-  if(mats.length){
+  const mbd=runMbDetail(r);
+  if(mbd){
+    h+=`<h2>Masterbatch</h2><p class="mut" style="font-size:9.5pt">Dosed as a percentage of the compound and reconciled on its own — not part of the PVC figures above.</p>`
+      +`<table><tbody>`
+      +`<tr><td>Opening</td><td class="n">${num(mbd.auto.opening_kg)}</td></tr>`
+      +`<tr><td>Withdrawn</td><td class="n">${num(mbd.auto.withdrawn_kg)}</td></tr>`
+      +`<tr><td>Closing</td><td class="n">${num(mbd.auto.closing_kg)}</td></tr>`
+      +`<tr class="em"><td>Actual used</td><td class="n">${mbd.actual==null?'—':num(mbd.actual,2)}</td></tr>`
+      +`<tr><td>Expected (dosed)</td><td class="n">${mbd.expected==null?'—':num(mbd.expected,2)}</td></tr>`
+      +`<tr class="em"><td>vs BOM (kg)</td><td class="n ${overCls(mbd.diff)}">${mbd.diff==null?'—':sgn(mbd.diff,2)+' kg'}</td></tr>`
+      +`<tr class="em"><td>vs BOM</td><td class="n ${overCls(mbd.varPct)}">${mbd.varPct==null?'—':pct(mbd.varPct)}</td></tr>`
+      +`</tbody></table>`;
+    if(mbd.per.length){
+      let mte=0;
+      const mrows=mbd.per.map(x=>{ mte+=x.exp;
+        return `<tr><td>${RHTML(x.size||'—')}</td><td class="n">${num(x.pct,2)}%</td><td class="n">${num(x.mbBom,2)}</td>`
+          +`<td class="n">${num(x.metres)}</td><td class="n">${num(x.exp,2)}</td></tr>`; }).join('');
+      h+=`<table><thead><tr><th>Size / product</th><th class="n">MB %</th><th class="n">MB kg/km</th><th class="n">Length (m)</th><th class="n">Expected kg</th></tr></thead>`
+        +`<tbody>${mrows}<tr class="em"><td>Total</td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n">${num(mte,2)}</td></tr></tbody></table>`;
+    }
+  }
+  const otherMats=mats.filter(m=>!(mbd&&m===mbd.auto));
+  if(otherMats.length){
     h+=`<h2>Other materials</h2><table><thead><tr><th>Material</th><th class="n">Opening</th><th class="n">Withdrawn</th><th class="n">Closing</th><th class="n">Actual</th><th class="n">Expected</th></tr></thead><tbody>`;
-    mats.forEach(m=>{ const a=(m.opening_kg==null||m.closing_kg==null)?null:(+m.opening_kg+(+m.withdrawn_kg||0)-+m.closing_kg);
+    otherMats.forEach(m=>{ const a=(m.opening_kg==null||m.closing_kg==null)?null:(+m.opening_kg+(+m.withdrawn_kg||0)-+m.closing_kg);
       h+=`<tr><td>${RHTML(m.label)}</td><td class="n">${num(m.opening_kg)}</td><td class="n">${num(m.withdrawn_kg)}</td>`
        +`<td class="n">${num(m.closing_kg)}</td><td class="n">${a===null?'—':num(a)}</td><td class="n">${num(m.expected_kg)}</td></tr>`; });
     h+='</tbody></table>';
@@ -1818,14 +1921,14 @@ function ccvReportPack(g){
   const {html,ref}=ccvRunReport(g);
   const body=CCV_LAYERS.map(([k,name])=>{ const r=g.L[k]; if(!r) return null;
     return `${name}: expected ${num(r.expected_kg)} kg, actual ${num(r.actual_kg)} kg, `
-      +`vs BOM ${pct(-(+r.variance_pct),2)} (${r._d.verdict.label})`; }).filter(Boolean).join('\n');
+      +`vs BOM ${pct(overPctVal(r),2)} (${r._d.verdict.label})`; }).filter(Boolean).join('\n');
   return {html, filename:safeName(`CCV ${ref} run report.html`), subject:`CCV run summary — ${ref}`,
     body:`Run summary for the CCV line, ${ref} (${dt(g.started_at)}).\n\n${body}\n\nCharts and the full breakdown are in the attached report.`};
 }
 function st2ReportPack(r){
   const {html,ref}=st2RunReport(r);
-  const body=`Expected ${num(r.expected_kg)} kg, actual ${num(r.actual_kg)} kg, vs BOM ${pct(r.variance_pct)}.\n`
-    +`Against the normal loss model this run is ${sgn(r._d.resid)} kg (${r._d.verdict.label}).`;
+  const body=`Expected ${num(r.expected_kg)} kg, actual ${num(r.actual_kg)} kg, vs BOM ${pct(overPctVal(r))} (${r._d.verdict.label}).\n`
+    +`Difference: ${sgn(r.variance_kg)} kg.`;
   return {html, filename:safeName(`${ref} run report.html`), subject:`Run summary — ${ref}`,
     body:`Run summary for ${S.item.description||S.item.item_no}, ${ref} (${dt(r.started_at)}).\n\n${body}\n\nCharts and the full breakdown are in the attached report.`};
 }
@@ -1861,8 +1964,6 @@ function viewRunSummary(){
   const dScrapSum = runDeclaredScrap(r);
   out.append(card('Material balance', null, runBalanceTable(r),
     el('div',{class:'inline',style:'gap:22px;flex-wrap:wrap'},
-      el('div',{},el('div',{class:'small muted'},'vs model (real excess/shortfall)'),
-        el('div',{class:(d.resid>0?'neg':'pos')}, +r.expected_kg>0?sgn(d.resid):'—')),
       gap!==null? el('div',{},el('div',{class:'small muted'},'Navision posting gap'),
         el('div',{class:(+gap<0?'neg':'')}, sgn(gap)+(gapSrc?' (from ledger)':' (from WIP balance)'))):null,
       dScrapSum? el('div',{},el('div',{class:'small muted'},'Scrap declared in Navision'),
@@ -1912,18 +2013,30 @@ function viewRunSummary(){
       el('div',{class:'scroll'},runProductTable(r))));
   }
   if(r.thk_n>0){
+    const spec=specFor(r);
     out.append(card('Thickness', `${r.thk_n} reading${r.thk_n===1?'':'s'} recorded`,
-      el('div',{class:'inline',style:'gap:22px'},
-        el('div',{},el('div',{class:'small muted'},'Mean'),el('div',{},num(r.thk_actual_ave,3)+' mm')),
-        r.thk_std_nom!=null? el('div',{},el('div',{class:'small muted'},'Nominal'),el('div',{},num(r.thk_std_nom,2)+' mm')):null,
-        r.thickness_dev_pct!=null? el('div',{},el('div',{class:'small muted'},'vs nominal'),
+      el('div',{class:'inline',style:'gap:22px;flex-wrap:wrap'},
+        el('div',{},el('div',{class:'small muted'},'Actual mean'),el('div',{},num(r.thk_actual_ave,3)+' mm')),
+        el('div',{},el('div',{class:'small muted'},'Target min'),el('div',{}, spec.LSL!=null?num(spec.LSL,2)+' mm':'—')),
+        el('div',{},el('div',{class:'small muted'},'Target ave'),el('div',{}, spec.T!=null?num(spec.T,2)+' mm':'—')),
+        el('div',{},el('div',{class:'small muted'},'Target max'),el('div',{}, spec.USL!=null?num(spec.USL,2)+' mm':'—')),
+        r.thickness_dev_pct!=null? el('div',{},el('div',{class:'small muted'},'vs target ave'),
           el('div',{class:(+r.thickness_dev_pct>3?'neg':'')}, pct(r.thickness_dev_pct))):null,
         r.start_end_dev_pct!=null? el('div',{},el('div',{class:'small muted'},'Start vs end'),
           el('div',{}, pct(r.start_end_dev_pct))):null)));
   }
-  if(mats.length){
+  const mbd=runMbDetail(r);
+  if(mbd){
+    out.append(card('Masterbatch','Dosed as a percentage of the compound, tracked and reconciled on its own — never part of the PVC figures above.',
+      mbBalanceTable(mbd),
+      mbd.per.length? mbSizeTable(mbd) : null,
+      (mbd.diff!=null && mbd.expected>0 && Math.abs(mbd.diff)>0.05)? el('div',{class:'small sec'},
+        `Masterbatch ran ${mbd.diff<0? num(-mbd.diff,2)+' kg over':num(mbd.diff,2)+' kg under'} the dosed expectation (${pct(mbd.varPct)}).`) : null));
+  }
+  const otherMats=mats.filter(m=>!(mbd&&m===mbd.auto));
+  if(otherMats.length){
     out.append(card('Other materials on this run', null, el('div',{},
-      ...mats.map(m=>{
+      ...otherMats.map(m=>{
         const actual=(m.opening_kg==null||m.closing_kg==null)?null:(+m.opening_kg+(+m.withdrawn_kg||0)-+m.closing_kg);
         return el('div',{class:'small',style:'margin:4px 0'},el('b',{},m.label),': ',
           actual==null?'—':num(actual,1)+' kg used', m.note?el('span',{class:'muted'},' — '+m.note):null);
@@ -1962,8 +2075,8 @@ function ccvBalanceMatrix(g){
   row('Actual consumed', r=>num(r.actual_kg), {bold:true});
   row('BOM expected', r=> +r.expected_kg>0? num(r.expected_kg) : '—');
   row('— of which on scrapped cable', r=> scrapKgCell(r));
-  row('vs BOM', r=> +r.expected_kg>0? pct(-(+r.variance_pct),2) : '—',
-      {bold:true, cls:r=> +r.expected_kg>0 ? ((-(+r.variance_pct))>0?'neg':'pos') : ''});
+  row('vs BOM', r=> +r.expected_kg>0? pct(overPctVal(r),2) : '—',
+      {bold:true, cls:r=> overCls(overPctVal(r))});
   row('Verdict', r=> sevPill(r._d.verdict.sev, r._d.verdict.label));
   t.append(tb);
   return t;
@@ -2019,6 +2132,22 @@ function viewCcvRunSummary(){
         el('div',{}, g.core_scrap_pct===null?'—':`${num(g.core_scrap_m)} m (${(+g.core_scrap_pct).toFixed(1)}%)`))),
     ccvBalanceMatrix(g)));
 
+  const thkLayers=CCV_LAYERS.map(([k,name])=>{
+    const r=g.L[k]; if(!r||!r.thk_n) return null;
+    const spec=specFor(r);
+    return el('div',{style:'min-width:160px'},
+      el('div',{class:'small',style:`color:${CCV_COL[k]};font-weight:650;margin-bottom:4px`},name),
+      el('div',{class:'small muted'},`${r.thk_n} reading${r.thk_n===1?'':'s'}`),
+      el('div',{},el('span',{class:'small muted'},'Actual mean '), num(r.thk_actual_ave,3),' mm'),
+      el('div',{class:'small',style:'margin-top:4px'},
+        'Target min ', spec.LSL!=null?num(spec.LSL,2):'—',
+        ' · ave ', spec.T!=null?num(spec.T,2):'—',
+        ' · max ', spec.USL!=null?num(spec.USL,2):'—'));
+  }).filter(Boolean);
+  if(thkLayers.length) out.append(card('Thickness',
+    'Target min / ave / max from the product specification. Actual mean is the average of the recorded walls.',
+    el('div',{class:'inline',style:'gap:28px;flex-wrap:wrap;align-items:flex-start'},...thkLayers)));
+
   /* Findings are one flowing line each here rather than stacked boxes — on a one-page summary
      the space is worth more than the padding. Run-level findings first, then per material. */
   const fline=(f,name,col)=> el('div',{class:'fitem',style:'margin:0 0 5px;padding-left:9px;border-left:2px solid var(--grid);line-height:1.45'},
@@ -2059,7 +2188,7 @@ function viewMats(){
   if(!rows.length) return card('Other materials','Nothing recorded yet for this compound.',
     el('div',{class:'muted small'},'Masterbatch and other secondary materials are entered on each run.'));
   const t=el('table');
-  t.append(el('thead',{},el('tr',{},...['Run','Material','Opening','Withdrawn','Closing','BOM g/m','Expected','Actual','Variance','']
+  t.append(el('thead',{},el('tr',{},...['Run','Material','Opening','Withdrawn','Closing','BOM g/m','Expected','Actual','vs BOM','']
     .map((h,i)=>el('th',{class:(i>=2&&i<=8)?'n':''},h)))));
   const tb=el('tbody');
   rows.forEach(r=>{
@@ -2072,7 +2201,7 @@ function viewMats(){
       el('td',{class:'n'},num(r.m.bom_g_per_m,1)),
       el('td',{class:'n'},num(r.exp,1)),
       el('td',{class:'n'},num(r.actual,1)),
-      el('td',{class:'n '+((r.varKg??0)<0?'neg':'pos')}, r.varPct===null?'—':`${sgn(r.varKg,1)} kg (${pct(r.varPct,1)})`),
+      el('td',{class:'n '+overCls(r.varPct),'data-label':'vs BOM'}, r.varPct===null?'—':`${sgn(r.varKg,1)} kg (${pct(r.varPct,1)})`),
       el('td',{class:'small muted'}, r.m.note||'')));
   });
   t.append(tb);
@@ -2135,12 +2264,13 @@ function viewNav(){
     !S.canEdit? el('div',{class:'note warn'},'Read-only — an editor role is needed to import.'):null));
 
   if(S.ledger.length){
+    const runById=new Map(S.runs.map(r=>[r.id,r]));
     const cons=S.ledger.filter(l=>/consumption/i.test(l.entry_type||''));
     const tr  =S.ledger.filter(l=>/transfer/i.test(l.entry_type||''));
     const byMR={}; cons.forEach(l=>{ const k=l.document_no||'—';
       byMR[k]=byMR[k]||{q:0,n:0,scrap:null,fg:new Set(),op:new Set(),d0:null,d1:null,run:null,lag:0};
       const b=byMR[k]; b.q+=-(+l.quantity); b.n++; b.scrap=l.scrap_qty; if(l.source_no)b.fg.add(l.source_no);
-      if(l.operation_no)b.op.add(l.operation_no); if(l.run_id) b.run=S.runs.find(r=>r.id===l.run_id);
+      if(l.operation_no)b.op.add(l.operation_no); if(l.run_id) b.run=runById.get(l.run_id);
       // posting date drives every balance; posted date is only a data-entry lag signal
       const p=l.posting_date, e=l.posted_date||l.finished_date;
       if(!b.d0||p<b.d0)b.d0=p; if(!b.d1||p>b.d1)b.d1=p;
@@ -2159,7 +2289,7 @@ function viewNav(){
         el('td',{class:'n'},String(b.n)),
         el('td',{class:'n'},num(b.q,2)),
         el('td',{class:'n'},exp!=null?num(exp,1):'—'),
-        el('td',{class:'n '+(exp==null?'muted':b.q>exp?'neg':'pos')}, exp!=null? pct((b.q-exp)/exp*100,1):'—'),
+        el('td',{class:'n '+(exp==null?'muted':overCls((exp-b.q)/exp*100))}, exp!=null? pct((exp-b.q)/exp*100,1):'—'),
         el('td',{class:'n'},num(b.scrap)),
         el('td',{class:'small'},[...b.fg].join(', ')),
         el('td',{class:'small'},[...b.op].join(', ')),
@@ -2175,6 +2305,37 @@ function viewNav(){
         `${num(tr.length)} transfer lines totalling ${num(tr.reduce((a,l)=>a+(+l.quantity),0),2)} kg into WIP.`),
       maxLag>7? el('div',{class:'note warn'},el('b',{},`Up to ${maxLag} days between the posting date and the day the entry was actually keyed in. `),
         'Every balance in this app is built on the posting date, which is the accounting truth. But it means a WIP figure read off the screen before those late entries land will be wrong for that date — and will change on its own afterwards. Read balances only after the period is closed.'):null));
+
+    // Every ledger transaction, in posting-date order, with the WIP remaining after each one
+    const Mled=ledgerModel();
+    if(Mled.withBal.length){
+      const tt=el('table');
+      tt.append(el('thead',{},el('tr',{},...['Posting date','Entry no.','Type','Document / MR','Lot','Qty (kg)','WIP remaining (kg)']
+        .map((h,i)=>el('th',{class:(i===1||i>=5)?'n':''},h)))));
+      const tbb=el('tbody');
+      Mled.withBal.forEach(l=>{ const q=+l.quantity;
+        const run=l.run_id? runById.get(l.run_id) : null;
+        tbb.append(el('tr',{},
+          el('td',{class:'mono small'},dt(l.posting_date)),
+          el('td',{class:'n mono small'}, l.entry_no??'—'),
+          el('td',{class:'small'}, l.entry_type||'—'),
+          el('td',{}, l.document_no||'—', run? el('div',{class:'small muted'},'→ '+run.sheet_ref):null),
+          el('td',{class:'mono small'}, l.lot_no||'—'),
+          el('td',{class:'n '+(q<0?'neg':'pos')}, sgn(q,2)),
+          el('td',{class:'n '+((+l.balance)<0?'neg':'')}, num(l.balance,2))));
+      });
+      tt.append(tbb);
+      const closeBal=Mled.withBal[Mled.withBal.length-1].balance;
+      out.append(card('Ledger, transaction by transaction — running WIP balance',
+        'Every entry from the imported Item Ledger in posting-date order, with the Navision WIP that remains after each one. This running balance is what every reconciliation in the app is built on. A negative balance (red) means consumption was posted before its matching receipt, or the opening balance is understated.',
+        el('div',{class:'scroll',style:'max-height:70vh'},tt),
+        el('div',{class:'note'},
+          el('b',{},'Opening '), num(Mled.opening,2)+' kg',
+          ' · '+num(Mled.withBal.length)+' entries · ',
+          el('b',{},'closing '), num(closeBal,2)+' kg'+
+            (Mled.stated!=null? ' · Navision states '+num(Mled.stated,2)+' kg'+(Mled.statedAt?' at '+dt(Mled.statedAt):'') : ''),
+          Mled.opening===null? el('div',{class:'small muted',style:'margin-top:4px'},'No stated system WIP is set for this item (Settings), so the balances above are cumulative movement from zero rather than the true stock. Set the WIP figure to anchor them.') : null)));
+    }
   }
 
   const withNav=rs.filter(r=>r.nav_wip_open!==null);
@@ -2337,8 +2498,8 @@ function chartCcvVariance(groups){
   const droppedBad=groups.filter(g=>g.bad).length, droppedSevere=groups.filter(g=>g.severe).length;
   if(!gs.length) return el('div',{class:'muted small'},'No measurable runs yet.');
   const W=880,H=320,P={t:22,r:24,b:60,l:56}, iw=W-P.l-P.r, ih=H-P.t-P.b;
-  const vals=gs.flatMap(g=>CCV_LAYERS.map(([k])=> g.L[k]? -(+g.L[k].variance_pct) : null)).filter(v=>v!==null);
-  const {ticks,lo,hi}=niceTicks(Math.min(-20,...vals),Math.max(20,...vals),6);
+  const vals=gs.flatMap(g=>CCV_LAYERS.map(([k])=> g.L[k]? overPctVal(g.L[k]) : null)).filter(v=>v!==null);
+  const {ticks,lo,hi}=niceTicks(Math.min(-25,...vals),Math.max(10,...vals),6);
   const y=v=>P.t+ih-(v-lo)/(hi-lo)*ih;
   const step=iw/gs.length, bw=Math.min(20,(step*0.72)/3);
   const s=SV(W,H);
@@ -2348,7 +2509,7 @@ function chartCcvVariance(groups){
     const cx=P.l+step*i+step/2;
     CCV_LAYERS.forEach(([k,name,grade],j)=>{
       const r=g.L[k]; if(!r||r.variance_pct===null) return;
-      const v=-(+r.variance_pct);                      // positive = used more than BOM
+      const v=overPctVal(r)||0;
       const x0=cx+(j-1)*(bw+3)-bw/2, y0=y(0), y1=y(v);
       const n=SE('g');
       n.append(SE('rect',{x:x0,y:Math.min(y0,y1),width:bw,height:Math.max(2,Math.abs(y1-y0)),rx:3,
@@ -2384,7 +2545,7 @@ function viewCcvDash(){
   CCV_LAYERS.forEach(([k,name,grade])=>{
     const rs=ok.map(g=>g.L[k]).filter(Boolean);
     const e=rs.reduce((a,r)=>a+ +r.expected_kg,0), a2=rs.reduce((a,r)=>a+ +r.actual_kg,0);
-    tiles.append(tile(name, e? (a2>e?'+':'')+((a2-e)/e*100).toFixed(2)+'%' : '—',
+    tiles.append(tile(name, e? pct((e-a2)/e*100) : '—',
       `${grade} · ${num(Math.abs(a2-e))} kg ${a2>e?'above':'below'} BOM, ${ok.length} normal run${ok.length===1?'':'s'}`, (a2-e)>0?'neg':'pos'));
   });
   out.append(tiles);
@@ -2395,13 +2556,13 @@ function viewCcvDash(){
         return el('div',{class:'small',style:'margin:3px 0'},
           el('span',{class:'pill',style:`border-color:${CCV_COL[k]};color:${CCV_COL[k]}`},name),' ',
           `expected ${num(r.expected_kg)} kg, actual ${num(r.actual_kg)} kg — `,
-          el('b',{class:'neg'},pct(-(+r.variance_pct),1)),
+          el('b',{class:'neg'},pct(overPctVal(r),1)),
           ` (${num(Math.abs(r.variance_kg))} kg over)`); }).filter(Boolean);
       return [el('div',{style:'margin:14px 0 4px'},el('b',{},g.base.replace(/^CCV /,'')),
         el('span',{class:'small muted'},' '+(g.sizes||''))), ...rows];
     })));
-  out.append(card('Variance against BOM, by run and material',
-    'One cluster per production run, one bar per material — the same three grades the sheet tracks together. Positive means more material was used than the recipe allows.',
+  out.append(card('vs BOM, by run and material',
+    'One cluster per production run, one bar per material — the same three grades the sheet tracks together. Minus means more material was used than the recipe.',
     chartCcvVariance(groups),
     el('div',{class:'legend'},...CCV_LAYERS.map(([k,name,grade])=>
       el('span',{},el('i',{style:`background:${CCV_COL[k]}`}),`${name} (${grade})`)))));
@@ -2422,18 +2583,22 @@ function viewCcvRuns(){
   const groups=ccvGroups();
   const t=el('table',{class:'rtable'});
   const h1=el('tr',{});
-  h1.append(el('th',{rowspan:2},'Run'),el('th',{rowspan:2},'Product'),el('th',{rowspan:2,class:'n'},'Cable m'),
+  h1.append(el('th',{rowspan:2,class:'act'},'Summary'),el('th',{rowspan:2,class:'act'},'Edit'),el('th',{rowspan:2},'Run'),el('th',{rowspan:2},'Product'),el('th',{rowspan:2,class:'n'},'Cable m'),
     el('th',{rowspan:2,class:'n'},'Core scrap'));
   CCV_LAYERS.forEach(([k,name])=> h1.append(el('th',{colspan:3,class:'n',
     style:`border-bottom:2px solid ${CCV_COL[k]}`},name)));
-  h1.append(el('th',{rowspan:2},'Verdict'),el('th',{rowspan:2},''),el('th',{rowspan:2},''));
+  h1.append(el('th',{rowspan:2},'Verdict'));
   const h2=el('tr',{});
   CCV_LAYERS.forEach(()=> h2.append(el('th',{class:'n'},'Exp.'),el('th',{class:'n'},'Actual'),el('th',{class:'n'},'vs BOM')));
   t.append(el('thead',{},h1,h2));
   const tb=el('tbody');
   groups.slice().reverse().forEach(g=>{
     const tr=el('tr',{});
-    tr.append(el('td',{class:'rhead'},el('b',{},g.base.replace(/^CCV /,'')),
+    tr.append(el('td',{class:'act','data-label':''},
+        el('button',{class:'btn sm sum',onclick:()=>openCcvRunSummary(g.base)},'Summary')),
+      el('td',{class:'act','data-label':''},
+        S.canEdit? el('button',{class:'btn sm edit',onclick:()=>openCcvRun(g.base)},'Edit'):null),
+      el('td',{class:'rhead'},el('b',{},g.base.replace(/^CCV /,'')),
         el('div',{class:'small muted'},dt(g.started_at)+(g.mr?` · MR ${g.mr}`:''))),
       el('td',{class:'small','data-label':'Product'},g.sizes||'—'),
       el('td',{class:'n','data-label':'Cable m'},num(g.metres)),
@@ -2442,15 +2607,13 @@ function viewCcvRuns(){
     CCV_LAYERS.forEach(([k,name])=>{
       const r=g.L[k];
       if(!r){ tr.append(el('td',{class:'n','data-label':`${name} exp.`},'—'),el('td',{class:'n','data-label':`${name} actual`},'—'),el('td',{class:'n','data-label':`${name} vs BOM`},'—')); return; }
-      const v=-(+r.variance_pct);
+      const v=overPctVal(r);
       tr.append(el('td',{class:'n','data-label':`${name} exp.`},num(r.expected_kg,0)),el('td',{class:'n','data-label':`${name} actual`},num(r.actual_kg,0)),
-        el('td',{class:'n '+(v>0?'neg':'pos'),'data-label':`${name} vs BOM`},pct(v,1)));
+        el('td',{class:'n '+overCls(v),'data-label':`${name} vs BOM`},v==null?'—':pct(v,1)));
     });
     const worst=CCV_LAYERS.map(([k])=>g.L[k]).filter(Boolean)
       .sort((a,b)=>({crit:0,serious:1,warn:2,info:3,good:4})[a._d.verdict.sev]-({crit:0,serious:1,warn:2,info:3,good:4})[b._d.verdict.sev])[0];
     tr.append(el('td',{'data-label':'Verdict'},worst? sevPill(worst._d.verdict.sev,worst._d.verdict.label):''));
-    tr.append(el('td',{class:'act','data-label':''}, el('button',{class:'btn sm',onclick:()=>openCcvRunSummary(g.base)},'Summary')));
-    tr.append(el('td',{class:'act','data-label':''}, S.canEdit? el('button',{class:'btn sm',onclick:()=>openCcvRun(g.base)},'Edit'):null));
     tb.append(tr);
   });
   t.append(tb);
@@ -2458,7 +2621,7 @@ function viewCcvRuns(){
     el('div',{class:'chead',style:'margin-bottom:12px'},el('h2',{},'CCV runs — all three materials'),
       el('span',{style:'flex:1'}),
       S.canEdit? el('button',{class:'btn pri',onclick:()=>openCcvRun(null)},'+ New run'):null),
-    el('div',{class:'scroll'},t),
+    el('div',{class:'scroll scroll-top'},t),
     el('div',{class:'note'},el('b',{},'One row per production run, laid out like the monitoring sheet. '),
       'Inner semicon, insulation and outer semicon are extruded in a single pass, so they share the metres, the core scrap and the run window — but each keeps its own stock balance and its own variance.')));
 }
@@ -2470,19 +2633,19 @@ function viewCcvDiag(){
   const severe=usable.filter(g=>g.severe);
   const tot=(k,set)=>{ const rs=set.map(g=>g.L[k]).filter(Boolean);
     const e=rs.reduce((a,r)=>a+ +r.expected_kg,0), a2=rs.reduce((a,r)=>a+ +r.actual_kg,0);
-    return {e,a:a2,p:e?(a2-e)/e*100:null}; };
+    return {e,a:a2,p:e?(e-a2)/e*100:null}; };
   const T={ISC:tot('ISC',ok),INS:tot('INS',ok),OSC:tot('OSC',ok)};
   out.append(card('What the data says',null,
     el('div',{class:'note good',html:
       `<b>1. On ${ok.length} of ${groups.length} runs, this line is running under its recipe on the material that matters.</b>
        Insulation (MV XLPE) comes in at <b>${pct(T.INS.p,2)}</b> against BOM across those ${ok.length} runs — under
        on every one of them. Inner semicon ${pct(T.ISC.p,2)}, outer semicon ${pct(T.OSC.p,2)}. For comparison, the ST2
-       sheathing line runs about +8% on the same site with the same paperwork discipline, which is good evidence that
+       sheathing line runs about −8% on the same site with the same paperwork discipline, which is good evidence that
        the sheathing problem is specific to that line rather than general.`}),
     severe.length? el('div',{class:'note crit',html:
       `<b>2. The ${severe.length===1?'other run is':`other ${severe.length} runs are`} a real, severe overconsumption — not a sheet error.</b>
        ${severe.map(g=>CCV_LAYERS.map(([k,name])=>{ const r=g.L[k]; if(!r) return null;
-           return `${name} ${pct(-(+r.variance_pct),0)} (${num(Math.abs(r.variance_kg))} kg over BOM)`; })
+           return `${name} ${pct(overPctVal(r),0)} (${num(Math.abs(r.variance_kg))} kg over BOM)`; })
            .filter(Boolean).join(', ')).join('; ')}
        on ${severe.map(g=>esc(g.base.replace(/^CCV /,''))).join(', ')}.<br><br>
        This sheet originally applied one product's recipe to both products it covers (MR24619, 3x120mm&sup2; 33&nbsp;kV,
@@ -2502,7 +2665,7 @@ function viewCcvDiag(){
        when the arithmetic on the same row says the opposite. And bleed scrap is entered as a standing 23 / 78 / 30 kg
        on five of seven sheets — it is subtracted from consumption, so whatever it really is, it goes straight into the variance.`})));
 
-  out.append(card('Variance by run and material',null, chartCcvVariance(groups),
+  out.append(card('vs BOM, by run and material',null, chartCcvVariance(groups),
     el('div',{class:'legend'},...CCV_LAYERS.map(([k,name,grade])=>
       el('span',{},el('i',{style:`background:${CCV_COL[k]}`}),`${name} (${grade})`)))));
 
@@ -2547,8 +2710,8 @@ function ccvRunBlock(g,opts={}){
     box.append(el('div',{style:'display:flex;gap:10px;align-items:center;margin:10px 0 3px'},
       el('span',{class:'pill',style:`border-color:${CCV_COL[k]};color:${CCV_COL[k]}`},name),
       sevPill(r._d.verdict.sev,r._d.verdict.label),
-      el('span',{class:'small muted mono'},`${pct(-(+r.variance_pct),1)} vs BOM`)));
-    if(opts.balance) box.append(runBalanceTable(r,true));
+      el('span',{class:'small muted mono'},`${pct(overPctVal(r),1)} vs BOM`)));
+    if(opts.balance) box.append(runBalanceTable(r));
     const own=r._d.findings.filter(f=>!CCV_RUNLEVEL.has(f.code));
     if(!own.length) box.append(el('div',{class:'small muted',style:'margin:3px 0 0 14px'},
       'Nothing specific to this material — see the run notes above.'));
@@ -2706,6 +2869,19 @@ function specFor(run){
   return {LSL:base?N(base.std_thk_min):null, T:base?N(base.std_thk_nom):null, USL:base?N(base.std_thk_max):null,
           product:base, mixed:prods.length>1};
 }
+function thkSpecLines(spec){
+  if(!spec) return [];
+  return [
+    spec.LSL!=null?{v:+spec.LSL,name:'target min',color:RCOL.bad}:null,
+    spec.T!=null?{v:+spec.T,name:'target ave',color:RCOL.mut}:null,
+    spec.USL!=null?{v:+spec.USL,name:'target max',color:RCOL.bad}:null
+  ].filter(Boolean);
+}
+function thkTargetCaption(spec){
+  if(!spec) return '';
+  const bit=(lab,v)=> `${lab} ${v==null?'—':(+v).toFixed(2)+' mm'}`;
+  return `Target min ${spec.LSL==null?'—':(+spec.LSL).toFixed(2)+' mm'} · ave ${spec.T==null?'—':(+spec.T).toFixed(2)+' mm'} · max ${spec.USL==null?'—':(+spec.USL).toFixed(2)+' mm'}.`;
+}
 /* A capability study is only valid within one product — different sizes have different
    nominal walls, so pooling them measures the product mix, not the process. Scopes are
    therefore built per product, with individual runs available underneath. */
@@ -2765,12 +2941,12 @@ function viewSix(){
     el('div',{class:'inline',style:'margin-bottom:14px'},
       el('div',{},el('label',{},'Scope'),sel),
       el('div',{},el('label',{},'Statistic'),statSel),
-      el('div',{},el('label',{},'LSL'),el('input',{type:'number',step:'0.01',value:LSL??'',style:'width:90px',
-        oninput:e=>{S.specOverride={...ov,LSL:N(e.target.value)};render();}})),
-      el('div',{},el('label',{},'Target'),el('input',{type:'number',step:'0.01',value:T??'',style:'width:90px',
-        oninput:e=>{S.specOverride={...ov,T:N(e.target.value)};render();}})),
-      el('div',{},el('label',{},'USL'),el('input',{type:'number',step:'0.01',value:USL??'',style:'width:90px',
-        oninput:e=>{S.specOverride={...ov,USL:N(e.target.value)};render();}})),
+      el('div',{},el('label',{},'Target min'),el('input',{type:'number',step:'0.01',value:LSL??'',style:'width:90px',
+        onchange:e=>{S.specOverride={...ov,LSL:N(e.target.value)};render();}})),
+      el('div',{},el('label',{},'Target ave'),el('input',{type:'number',step:'0.01',value:T??'',style:'width:90px',
+        onchange:e=>{S.specOverride={...ov,T:N(e.target.value)};render();}})),
+      el('div',{},el('label',{},'Target max'),el('input',{type:'number',step:'0.01',value:USL??'',style:'width:90px',
+        onchange:e=>{S.specOverride={...ov,USL:N(e.target.value)};render();}})),
       Object.keys(ov).length? el('div',{},el('label',{},' '),el('button',{class:'btn sm',onclick:()=>{S.specOverride=null;render();}},'Reset to spec')):null),
     scope.n>0? el('div',{class:'small muted',style:'margin-bottom:4px'},
       `Scope: ${chosen.map(r=>r.sheet_ref).join(', ')}`) : null,
@@ -2905,7 +3081,7 @@ function viewSetup(){
       field('Previous system WIP (kg)','wPrev',S.item.prev_wip_qty,'Optional — the last figure you recorded, to see the move.'),
       el('div',{class:'field'},el('label',{},'Previous as at'),
         el('input',{id:'wPrevAt',type:'date',value:S.item.prev_wip_at||''}))),
-    el('div',{class:'field'},el('label',{},'Note'),el('input',{id:'wNote',value:S.item.wip_note||'',placeholder:'e.g. Items by Location, WIP row, after 25/07 postings'})),
+    el('div',{class:'field'},el('label',{},'Note'),el('input',{id:'wNote',value:S.item.wip_note||''})),
     S.canEdit? el('button',{class:'btn pri',onclick:saveWip},'Save balance') : el('span',{class:'small muted'},'Read-only.'),
     el('span',{id:'wipMsg',class:'small',style:'margin-left:10px'}),
     (S.item.prev_wip_qty!=null && S.item.system_wip_qty!=null)
@@ -2928,7 +3104,7 @@ function viewSetup(){
   const byP={}; S.runs.forEach(r=>{ (r._items||[]).forEach(i=>{
     byP[i.size]=byP[i.size]||{e:0,n:0}; byP[i.size].e+=(+i.bom_kg_per_km*+i.metres/1000); byP[i.size].n++; }); });
   const t=el('table');
-  t.append(el('thead',{},el('tr',{},...['Size','BOM kg/km','Nominal t','LSL','USL','D under sheath','Density','BOM implied by the formula','Δ','Runs']
+  t.append(el('thead',{},el('tr',{},...['Size','BOM kg/km','Target ave','Target min','Target max','D under sheath','Density','BOM implied by the formula','Δ','Runs']
     .map((h,i)=>el('th',{class:i?'n':''},h)))));
   const tb=el('tbody');
   S.products.forEach(p=>{
@@ -2953,7 +3129,7 @@ function viewSetup(){
   const calcBox=el('div',{class:'fgrid'},
     el('div',{class:'field'},el('label',{},'Diameter under sheath D (mm)'),el('input',{id:'cD',type:'number',step:'0.01',value:29.8,oninput:doCalc})),
     el('div',{class:'field'},el('label',{},'Wall thickness t (mm)'),el('input',{id:'cT',type:'number',step:'0.01',value:1.4,oninput:doCalc})),
-    el('div',{class:'field'},el('label',{},'Density (g/cm³)'),el('input',{id:'cR',type:'number',step:'0.01',value:1.4,oninput:doCalc})),
+    el('div',{class:'field'},el('label',{},'Density (g/cm³)'),el('input',{id:'cR',type:'number',step:'0.01',value:S.item?.density_g_cm3||1.4,oninput:doCalc})),
     el('div',{class:'field'},el('label',{},'Result'),el('div',{id:'cOut',class:'val',style:'font-size:22px;font-weight:660'},'—')));
   out.append(card('kg/km calculator','Same formula as the OSC THICKNESS sheet. Use it to sanity-check a BOM before trusting a variance.',calcBox));
   setTimeout(doCalc,0);
@@ -3003,26 +3179,61 @@ function mbCompute(){
   return {per, totMetres, totExp, wBom: totMetres? totExp*1000/totMetres : 0,
           active: per.some(x=>(+x.pct)>0)};
 }
+function closeEditor(modal){
+  if(modal && modal._esc) document.removeEventListener('keydown', modal._esc);
+  if(modal && modal.parentNode) modal.remove();
+}
+function bindEditorClose(modal){
+  modal._esc = e => {
+    if(e.key!=='Escape') return;
+    if(document.querySelector('.warn-modal')) return;
+    closeEditor(modal);
+  };
+  document.addEventListener('keydown', modal._esc);
+  modal.addEventListener('click', e => { if(e.target===modal) closeEditor(modal); });
+}
+function warnDelete({title, detail, onConfirm}){
+  const w=el('div',{class:'modal warn-modal'});
+  const box=el('div',{class:'card'});
+  box.append(el('h2',{},title||'Delete this record?'));
+  box.append(el('div',{class:'note crit',style:'margin-top:10px'}, detail));
+  box.append(el('div',{class:'editfoot',style:'position:static;margin-top:14px'},
+    el('button',{class:'btn danger',type:'button',onclick:async()=>{ w.remove(); await onConfirm(); }},'Yes, delete'),
+    el('button',{class:'btn',type:'button',onclick:()=>w.remove()},'Keep it')));
+  w.append(box);
+  w.addEventListener('click',e=>{ if(e.target===w) w.remove(); });
+  const onEsc=e=>{ if(e.key==='Escape'){ w.remove(); document.removeEventListener('keydown',onEsc); } };
+  document.addEventListener('keydown',onEsc);
+  document.body.append(w);
+}
 function openRun(id){
   const r = id ? S.runs.find(x=>x.id===id) : null;
-  editRows = r ? (r._items||[]).map(i=>({...i, bom:i.bom_kg_per_km, mb:''})) : [{size:'',mr_numbers:'',metres:'',bom:'',machine:'',mb:''}];
+  const EX=r?.input_expr||{};
+  editRows = r ? (r._items||[]).map((i,idx)=>({...i, bom:i.bom_kg_per_km, mb:'',
+    metresExpr:EX.items?.[idx]?.metres||null, bomExpr:EX.items?.[idx]?.bom||null, mbExpr:EX.items?.[idx]?.mb||null}))
+    : [{size:'',mr_numbers:'',metres:'',bom:'',machine:'',mb:''}];
   const allMats = r ? S.mats.filter(m=>m.run_id===r.id).map(m=>({...m})) : [];
   // separate the auto-dosed masterbatch row from operator-entered additives; rebuild its per-size %
   const autoMat = allMats.find(m=>MB_AUTO_RE.test(m.note||''));
-  editMats = allMats.filter(m=>m!==autoMat);
-  mbAuto = autoMat ? {opening_kg:autoMat.opening_kg??'', withdrawn_kg:autoMat.withdrawn_kg??'', closing_kg:autoMat.closing_kg??''}
+  editMats = allMats.filter(m=>m!==autoMat).map((m,idx)=>({...m,
+    openingExpr:EX.mats?.[idx]?.opening||null, withdrawnExpr:EX.mats?.[idx]?.withdrawn||null,
+    closingExpr:EX.mats?.[idx]?.closing||null, bomExpr:EX.mats?.[idx]?.bom||null, expectedExpr:EX.mats?.[idx]?.expected||null}));
+  mbAuto = autoMat ? {opening_kg:autoMat.opening_kg??'', withdrawn_kg:autoMat.withdrawn_kg??'', closing_kg:autoMat.closing_kg??'',
+                      openingExpr:EX.mb?.opening||null, withdrawnExpr:EX.mb?.withdrawn||null, closingExpr:EX.mb?.closing||null}
                    : {opening_kg:'',withdrawn_kg:'',closing_kg:''};
   const pctBySize = parseMbNote(autoMat?.note||'');
   editRows.forEach(row=>{ if((row.mb===''||row.mb==null) && pctBySize[row.size]!=null) row.mb=pctBySize[row.size]; });
-  editThk = r ? S.thk.filter(t=>t.run_id===r.id).map(t=>({...t})) : [];
+  editThk = r ? S.thk.filter(t=>t.run_id===r.id).map((t,idx)=>({...t,
+    minExpr:EX.thk?.[idx]?.min||null, aveExpr:EX.thk?.[idx]?.ave||null, maxExpr:EX.thk?.[idx]?.max||null})) : [];
   const iso=v=> v? new Date(new Date(v).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16) : '';
-  const m=el('div',{class:'modal',onclick:e=>{if(e.target===m)m.remove();}});
+  const m=el('div',{class:'modal editor-modal'});
+  bindEditorClose(m);
   const c=el('div',{class:'card'});
   c.append(el('div',{class:'chead'},el('h2',{},r?`Edit ${r.sheet_ref}`:'New run')));
-  c.append(el('div',{class:'csub'},'Everything else is calculated. Leave Scrap blank only if it truly was not counted — the app treats blank and zero differently on purpose. Number fields accept a sum like 20+20+20 — leave the field and it resolves to 60, like Excel.'));
+  c.append(el('div',{class:'csub'},'Everything else is calculated. Leave Scrap blank only if it truly was not counted — the app treats blank and zero differently on purpose. Number fields accept a sum — leave the field and it resolves to the total. The info icon then shows what you typed.'));
   const inp=(lab,id,type,val,help,info)=>el('div',{class:'field'},
-    el('label',{},lab, info?infoBtn(info):null),
-    type==='number'? calcInput({id,value:val}) : el('input',{id,type,step:'any',value:val===null||val===undefined?'':val}),
+    el('label',{},lab, (type!=='number' && info)?infoBtn(info):null),
+    type==='number'? calcInput({id,value:val,expr:EX[id]}) : el('input',{id,type,step:'any',value:val===null||val===undefined?'':val}),
     help?el('div',{class:'small muted',style:'margin-top:4px'},help):null);
   const h3i=(txt,info)=>el('h3',{style:'margin:18px 0 8px;display:flex;align-items:center'},txt, info?infoBtn(info):null);
   c.append(el('div',{class:'fgrid'},
@@ -3055,29 +3266,24 @@ function openRun(id){
   c.append(h3i('Material balance (kg)',
     '<b>How the run is scored</b>Actual consumed = Floor WIP opening + RM withdrawn − Total scrap − Floor WIP closing. '+
     'Expected = Σ (BOM kg/km × length ÷ 1000) across the products. vs BOM = (expected − actual) ÷ expected. '+
-    'The run is then judged against the normal-loss model (fixed per-run loss + a percentage), not flat BOM — '+
-    'so a short run is not punished for its fixed start-up purge.'));
+    'A minus means more compound was used than the recipe (overconsumption); a plus is a saving. Verdict is Saving or Overconsumption.'));
   c.append(el('div',{class:'fgrid'},
-    inp('Floor WIP — opening','f_po','number',r?.phys_wip_open??'',null,
-      'Physical stock of this compound in WIP at the start of the run — a count, or carried from the previous run’s closing figure. Required.'),
-    inp('RM withdrawn from store','f_wd','number',r?.rm_withdrawn??'',null,
-      'Raw material issued from the store into WIP for this run.'),
-    inp('Total scrap','f_scr','number',r?.scrap_kg??'','blank = not counted',
-      '<b>Weighed scrap for the run</b>Actual consumed = opening + withdrawn − <b>scrap</b> − closing. A <b>blank</b> box means scrap was not counted, so it is charged straight to consumption and makes the variance look worse than it is; that is different from a genuine <b>0</b>. If a ledger is imported, use “Fill scrap from ledger”.'),
-    inp('Floor WIP — closing','f_pc','number',r?.phys_wip_close??'',null,
-      'Physical stock left in WIP at the end of the run. The difference between opening+withdrawn and closing (less scrap) is what was consumed.')));
+    inp('Floor WIP — opening','f_po','number',r?.phys_wip_open??''),
+    inp('RM withdrawn from store','f_wd','number',r?.rm_withdrawn??''),
+    inp('Total scrap','f_scr','number',r?.scrap_kg??'','blank = not counted'),
+    inp('Floor WIP — closing','f_pc','number',r?.phys_wip_close??'')));
   const dScrap = r ? runDeclaredScrap(r) : null;
   if(dScrap) c.append(el('div',{style:'display:flex;align-items:center;gap:10px;margin:2px 0 4px;flex-wrap:wrap'},
     el('button',{class:'btn sm',type:'button',onclick:()=>{
-      const s=$('#f_scr'); if(s){ s.value=Math.round(dScrap.kg*100)/100; recalc(); }
+      const s=$('#f_scr'); if(s){ s.value=Math.round(dScrap.kg*100)/100; setCalcLook(s, null); recalc(); }
       const n=$('#scrapFillMsg'); if(n){ n.textContent='Filled with Navision’s declared scrap — review and Save.'; n.className='small ok'; }
     }},'⤓ Fill scrap from ledger'),
     el('span',{class:'small muted',html:`Navision declares <b>${num(dScrap.kg)} kg</b> of scrap for this run (de-duplicated across ${dScrap.groups} MR-day${dScrap.groups===1?'':'s'}).`}),
     el('span',{id:'scrapFillMsg',class:'small muted'})));
   const navFillBtn = (r&&r._navLed)? el('button',{class:'btn sm',type:'button',onclick:()=>{
       const o=$('#f_no'), c2=$('#f_nc');
-      if(o) o.value = r._navLed.open==null?'':Math.round(r._navLed.open*100)/100;
-      if(c2) c2.value = r._navLed.close==null?'':Math.round(r._navLed.close*100)/100;
+      if(o){ o.value = r._navLed.open==null?'':Math.round(r._navLed.open*100)/100; setCalcLook(o, null); }
+      if(c2){ c2.value = r._navLed.close==null?'':Math.round(r._navLed.close*100)/100; setCalcLook(c2, null); }
       recalc();
       const n=$('#navFillMsg'); if(n){ n.textContent='Filled from the ledger — review and Save.'; n.className='small ok'; }
     }},'⤓ Fill from ledger') : null;
@@ -3136,11 +3342,12 @@ function openRun(id){
   c.append(el('div',{class:'field',style:'margin-top:14px'},el('label',{},'Notes'),
     el('textarea',{id:'f_note',rows:2},r?.notes||'')));
   const msg=el('span',{class:'small',style:'margin-left:10px'});
-  c.append(el('div',{class:'editfoot'},
-    el('button',{class:'btn pri',onclick:()=>saveRun(r?.id,m,msg)},'Save run'),
-    el('button',{class:'btn',onclick:()=>m.remove()},'Cancel'),
-    r&&S.canEdit? el('button',{class:'btn danger',style:'margin-left:auto',onclick:()=>delRun(r.id,m)},'Delete'):null, msg));
-  m.append(c); document.body.append(m);
+  m.append(c);
+  m.append(el('div',{class:'editfoot'},
+    el('button',{class:'btn pri',type:'button',onclick:()=>saveRun(r?.id,m,msg)},'Save run'),
+    el('button',{class:'btn',type:'button',onclick:()=>closeEditor(m)},'Cancel'),
+    r&&S.canEdit? el('button',{class:'btn danger',type:'button',style:'margin-left:auto',onclick:()=>delRun(r.id,m)},'Delete'):null, msg));
+  document.body.append(m);
   c.addEventListener('input',recalc); recalc();
 }
 function drawRows(box){
@@ -3148,16 +3355,15 @@ function drawRows(box){
   // frozen column header (desktop); on a phone this hides and each row shows its own labels
   box.append(el('div',{class:'rowline rowhead'},
     el('div',{},'Size'),
-    el('div',{},'MR number(s)', infoBtn('The Navision material-requisition number(s) for this product, e.g. MR24576. The app matches ledger postings to this run by these, so keep them accurate. Separate several with / or a comma.')),
-    el('div',{},'BOM kg/km', infoBtn('The recipe weight per kilometre of cable for this size — the standard cost. Expected kg for this product = BOM × length ÷ 1000. Picking a known size fills this in; you can override it for a one-off.')),
-    el('div',{},'Metres', infoBtn('The length that drives the calculation: (good length + this product’s share of the core scrap) ÷ cores. For a three-core cable divide by 3; for single-core, by 1.')),
+    el('div',{},'MR number(s)'),
+    el('div',{},'BOM kg/km'),
+    el('div',{},'Metres'),
     el('div',{},'Line'),
     el('div',{},'')));
   editRows.forEach((row,i)=>{
     // BOM field is built first so the size field can fill it in when a known size is typed
-    const bomInp=calcInput({value:row.bom,oninput:e=>{row.bom=e.target.value;recalc();}});
+    const bomInp=calcInput({value:row.bom, expr:row.bomExpr, oninput:e=>{row.bom=e.target.value; row.bomExpr=e.target.dataset.calcExpr||null; recalc();}});
     const sizeInp=el('input',{value:row.size||'',list:'st2SizeList',autocomplete:'off',
-      placeholder:'type a size, or pick a known one',
       oninput:e=>{
         row.size=e.target.value;
         const p=S.products.find(x=>x.size===e.target.value);
@@ -3169,8 +3375,8 @@ function drawRows(box){
       el('div',{},el('label',{class:'mlab'},'Size'),sizeInp),
       el('div',{},el('label',{class:'mlab'},'MR number(s)'),el('input',{value:row.mr_numbers||'',oninput:e=>row.mr_numbers=e.target.value})),
       el('div',{},el('label',{class:'mlab'},'BOM kg/km'),bomInp),
-      el('div',{},el('label',{class:'mlab'},'Metres'),calcInput({value:row.metres,oninput:e=>{row.metres=e.target.value;recalc();}})),
-      el('div',{},el('label',{class:'mlab'},'Line'),el('input',{value:row.machine||'',placeholder:'E3',oninput:e=>row.machine=e.target.value})),
+      el('div',{},el('label',{class:'mlab'},'Metres'),calcInput({value:row.metres, expr:row.metresExpr, oninput:e=>{row.metres=e.target.value; row.metresExpr=e.target.dataset.calcExpr||null; recalc();}})),
+      el('div',{},el('label',{class:'mlab'},'Line'),el('input',{value:row.machine||'',oninput:e=>row.machine=e.target.value})),
       el('div',{}, editRows.length>1? el('button',{class:'btn sm danger',onclick:()=>{editRows.splice(i,1);drawRows(box);if(mbBoxRef)drawMbAuto(mbBoxRef);recalc();}},'×'):null)));
   });
 }
@@ -3187,12 +3393,13 @@ function drawMbAuto(box){
       'Add a production size above first — then set a masterbatch % against each size here and its BOM and expected fill in automatically.'));
   } else {
     const gc='grid-template-columns:1.3fr .9fr .55fr .8fr .9fr';
-    box.append(el('div',{class:'rowline rowhead',style:gc},
+    const mbScroll=el('div',{class:'listscroll'});   // own scrollbar when a run has many sizes
+    mbScroll.append(el('div',{class:'rowline rowhead',style:gc},
       el('div',{},'Size'),
       el('div',{},'Compound BOM kg/km'),
-      el('div',{},'MB %', infoBtn('Masterbatch let-down percentage for this size — how much colour/additive masterbatch is dosed against the compound. Leave blank or 0 for a size run without masterbatch.')),
-      el('div',{},'MB kg/km', infoBtn('<b>Calculated, never typed</b>MB kg/km = MB% × this size’s compound BOM kg/km.')),
-      el('div',{},'MB expected kg', infoBtn('MB kg/km × metres ÷ 1000, using the metres from the production row for this size.'))));
+      el('div',{},'MB %'),
+      el('div',{},'MB kg/km'),
+      el('div',{},'MB expected kg')));
     editRows.forEach(row=>{
       if(!String(row.size??'').trim()) return;
       const sizeEl=el('input',{class:'derived',readonly:'readonly',value:row.size});
@@ -3200,22 +3407,23 @@ function drawMbAuto(box){
       const kgkmEl=el('input',{class:'derived',readonly:'readonly',value:''});
       const expEl =el('input',{class:'derived',readonly:'readonly',value:''});
       row._mbEls={sizeEl,bomEl,kgkmEl,expEl};
-      const mbInp=calcInput({value:row.mb,placeholder:'e.g. 2',oninput:e=>{row.mb=e.target.value;recalc();}});
-      box.append(el('div',{class:'rowline',style:gc},
+      const mbInp=calcInput({value:row.mb, expr:row.mbExpr, oninput:e=>{row.mb=e.target.value; row.mbExpr=e.target.dataset.calcExpr||null; recalc();}});
+      mbScroll.append(el('div',{class:'rowline',style:gc},
         el('div',{},el('label',{class:'mlab'},'Size'),sizeEl),
         el('div',{},el('label',{class:'mlab'},'Compound BOM kg/km'),bomEl),
         el('div',{},el('label',{class:'mlab'},'MB %'),mbInp),
         el('div',{},el('label',{class:'mlab'},'MB kg/km'),kgkmEl),
         el('div',{},el('label',{class:'mlab'},'MB expected kg'),expEl)));
     });
+    box.append(mbScroll);
   }
   box.append(el('div',{class:'note',id:'mbTotLine',style:'margin:10px 0 6px'}));
   box.append(el('div',{class:'small muted',style:'margin-bottom:6px'},
     'Masterbatch physical stock for this run — entered by hand so it can be reconciled against the expected above. This is its own stock, kept separate from the compound.'));
   box.append(el('div',{class:'rowline',style:'grid-template-columns:.8fr .8fr .8fr .9fr .8fr;align-items:end'},
-    el('div',{},el('label',{class:'mlab'},'Opening (kg)'),calcInput({value:mbAuto.opening_kg,oninput:e=>mbAuto.opening_kg=e.target.value})),
-    el('div',{},el('label',{class:'mlab'},'Withdrawn (kg)'),calcInput({value:mbAuto.withdrawn_kg,oninput:e=>mbAuto.withdrawn_kg=e.target.value})),
-    el('div',{},el('label',{class:'mlab'},'Closing (kg)'),calcInput({value:mbAuto.closing_kg,oninput:e=>mbAuto.closing_kg=e.target.value})),
+    el('div',{},el('label',{class:'mlab'},'Opening (kg)'),calcInput({value:mbAuto.opening_kg, expr:mbAuto.openingExpr, oninput:e=>{mbAuto.opening_kg=e.target.value; mbAuto.openingExpr=e.target.dataset.calcExpr||null;}})),
+    el('div',{},el('label',{class:'mlab'},'Withdrawn (kg)'),calcInput({value:mbAuto.withdrawn_kg, expr:mbAuto.withdrawnExpr, oninput:e=>{mbAuto.withdrawn_kg=e.target.value; mbAuto.withdrawnExpr=e.target.dataset.calcExpr||null;}})),
+    el('div',{},el('label',{class:'mlab'},'Closing (kg)'),calcInput({value:mbAuto.closing_kg, expr:mbAuto.closingExpr, oninput:e=>{mbAuto.closing_kg=e.target.value; mbAuto.closingExpr=e.target.dataset.calcExpr||null;}})),
     el('div',{},el('label',{class:'mlab'},'Actual used (kg)'),el('input',{id:'mbActual',class:'derived',readonly:'readonly',value:''})),
     el('div',{},el('label',{class:'mlab'},'vs BOM'),el('input',{id:'mbVar',class:'derived',readonly:'readonly',value:''}))));
 }
@@ -3269,11 +3477,11 @@ function drawMats(box){
   editMats.forEach((row,i)=>{
     box.append(el('div',{class:'rowline',style:'grid-template-columns:1.2fr .7fr .7fr .7fr .7fr .8fr auto'},
       el('div',{},el('label',{},'Material'),el('input',{value:row.label||'',oninput:e=>row.label=e.target.value})),
-      el('div',{},el('label',{},'Opening'),calcInput({value:row.opening_kg,oninput:e=>row.opening_kg=e.target.value})),
-      el('div',{},el('label',{},'Withdrawn'),calcInput({value:row.withdrawn_kg,oninput:e=>row.withdrawn_kg=e.target.value})),
-      el('div',{},el('label',{},'Closing'),calcInput({value:row.closing_kg,oninput:e=>row.closing_kg=e.target.value})),
-      el('div',{},el('label',{},'BOM g/m'),calcInput({value:row.bom_g_per_m,oninput:e=>row.bom_g_per_m=e.target.value})),
-      el('div',{},el('label',{},'Expected kg'),calcInput({value:row.expected_kg,oninput:e=>row.expected_kg=e.target.value})),
+      el('div',{},el('label',{},'Opening'),calcInput({value:row.opening_kg, expr:row.openingExpr, oninput:e=>{row.opening_kg=e.target.value; row.openingExpr=e.target.dataset.calcExpr||null;}})),
+      el('div',{},el('label',{},'Withdrawn'),calcInput({value:row.withdrawn_kg, expr:row.withdrawnExpr, oninput:e=>{row.withdrawn_kg=e.target.value; row.withdrawnExpr=e.target.dataset.calcExpr||null;}})),
+      el('div',{},el('label',{},'Closing'),calcInput({value:row.closing_kg, expr:row.closingExpr, oninput:e=>{row.closing_kg=e.target.value; row.closingExpr=e.target.dataset.calcExpr||null;}})),
+      el('div',{},el('label',{},'BOM g/m'),calcInput({value:row.bom_g_per_m, expr:row.bomExpr, oninput:e=>{row.bom_g_per_m=e.target.value; row.bomExpr=e.target.dataset.calcExpr||null;}})),
+      el('div',{},el('label',{},'Expected kg'),calcInput({value:row.expected_kg, expr:row.expectedExpr, oninput:e=>{row.expected_kg=e.target.value; row.expectedExpr=e.target.dataset.calcExpr||null;}})),
       el('div',{},el('button',{class:'btn sm danger',onclick:()=>{editMats.splice(i,1);drawMats(box);}},'×'))));
   });
 }
@@ -3293,9 +3501,9 @@ function drawThk(box){
   editThk.forEach((row,i)=>{
     box.append(el('div',{class:'rowline',style:gc},
       el('div',{},el('label',{class:'mlab'},'Position'),thkPosSelect(row)),
-      el('div',{},el('label',{class:'mlab'},'Min (mm)'),calcInput({value:row.thk_min,oninput:e=>row.thk_min=e.target.value})),
-      el('div',{},el('label',{class:'mlab'},'Average (mm)'),calcInput({value:row.thk_ave,oninput:e=>row.thk_ave=e.target.value})),
-      el('div',{},el('label',{class:'mlab'},'Max (mm)'),calcInput({value:row.thk_max,oninput:e=>row.thk_max=e.target.value})),
+      el('div',{},el('label',{class:'mlab'},'Min (mm)'),calcInput({value:row.thk_min, expr:row.minExpr, oninput:e=>{row.thk_min=e.target.value; row.minExpr=e.target.dataset.calcExpr||null;}})),
+      el('div',{},el('label',{class:'mlab'},'Average (mm)'),calcInput({value:row.thk_ave, expr:row.aveExpr, oninput:e=>{row.thk_ave=e.target.value; row.aveExpr=e.target.dataset.calcExpr||null;}})),
+      el('div',{},el('label',{class:'mlab'},'Max (mm)'),calcInput({value:row.thk_max, expr:row.maxExpr, oninput:e=>{row.thk_max=e.target.value; row.maxExpr=e.target.dataset.calcExpr||null;}})),
       el('div',{}, el('button',{class:'btn sm danger',onclick:()=>{editThk.splice(i,1);drawThk(box);}},'×'))));
   });
 }
@@ -3305,16 +3513,15 @@ function recalc(){
   const act=po+wd-pc-(scr||0);
   const exp=editRows.reduce((a,r)=>a+((N(r.bom)||0)*(N(r.metres)||0)/1000),0);
   updateMb();
-  const bm=benchmark(exp), resid=act-bm, box=$('#liveCalc'); if(!box) return;
+  const box=$('#liveCalc'); if(!box) return;
   if(!exp&&!po&&!wd){ box.className='note'; box.innerHTML='<b>Live check</b><br>Fill in the balance and metres and the figures appear here as you type.'; return; }
   const vp = exp? (exp-act)/exp*100 : null;
   // closing higher than opening + withdrawn makes consumption negative — a physical impossibility
   // for a normal run (missing transfer-in, or an off closing count). Flag it rather than hide it.
   const impossible = (po+wd-(pc)) < 0;
-  box.className='note '+(impossible?'crit':scr===null?'crit':resid>0.03*exp?'warn':'good');
+  box.className='note '+(impossible?'crit':scr===null?'crit':(act-exp)>0.03*exp?'warn':'good');
   box.innerHTML=`<b>Live check</b><br>
-    Expected by BOM <b>${num(exp)} kg</b> &nbsp;·&nbsp; Actual consumption <b>${num(act)} kg</b> &nbsp;·&nbsp; vs BOM <b>${vp===null?'—':pct(vp)}</b><br>
-    Normal loss model says <b>${num(bm)} kg</b> &nbsp;·&nbsp; this run is <b class="${resid>0?'neg':'pos'}">${sgn(resid)} kg</b> against it.
+    Expected by BOM <b>${num(exp)} kg</b> &nbsp;·&nbsp; Actual consumption <b>${num(act)} kg</b> &nbsp;·&nbsp; vs BOM <b class="${overCls(vp)}">${vp===null?'—':pct(vp)}</b>
     ${impossible?`<br><b style="color:var(--crit)">Closing stock (${num(pc)} kg) is higher than opening + withdrawn (${num(po+wd)} kg), so consumption comes out negative. Check the closing WIP or a missing transfer-in — the compound figures are not usable until this is resolved.</b>`:''}
     ${scr===null?'<br><b style="color:var(--crit)">Scrap is blank — the variance above is charging all scrap to consumption.</b>':''}`;
 }
@@ -3366,6 +3573,15 @@ async function saveRun(id, modal, msg){
       (!String(br.size??'').trim()? 'needs a size' : 'needs Metres')+' — nothing has been saved.';
     msg.className='small err'; return;
   }
+  payload.input_expr={
+    f_po:fieldExpr('f_po'), f_wd:fieldExpr('f_wd'), f_scr:fieldExpr('f_scr'), f_pc:fieldExpr('f_pc'),
+    f_no:fieldExpr('f_no'), f_nc:fieldExpr('f_nc'), f_np:fieldExpr('f_np'),
+    items:started.map(r=>({metres:r.metresExpr||null, bom:r.bomExpr||null, mb:r.mbExpr||null})),
+    mb:{opening:mbAuto.openingExpr||null, withdrawn:mbAuto.withdrawnExpr||null, closing:mbAuto.closingExpr||null},
+    mats:editMats.filter(m=>m.label).map(m=>({opening:m.openingExpr||null, withdrawn:m.withdrawnExpr||null,
+      closing:m.closingExpr||null, bom:m.bomExpr||null, expected:m.expectedExpr||null})),
+    thk:editThk.map(t=>({min:t.minExpr||null, ave:t.aveExpr||null, max:t.maxExpr||null}))
+  };
   msg.textContent='Saving…'; msg.className='small muted';
   let runId=id, err;
   if(id){ ({error:err}=await sb.from('mc_runs').update(payload).eq('id',id)); }
@@ -3402,16 +3618,27 @@ async function saveRun(id, modal, msg){
       thk_min:N(t.thk_min), thk_ave:N(t.thk_ave), thk_max:N(t.thk_max)}));
   if(thk.length){ const {error}=await sb.from('mc_thickness').insert(thk);
     if(error){ msg.textContent=error.message; msg.className='small err'; return; } }
-  modal.remove(); await loadItem(); render();
+  closeEditor(modal); await loadItem(); render();
 }
-async function delRun(id,modal){ if(!confirm('Delete this record and its readings?')) return;
-  await sb.from('mc_runs').delete().eq('id',id); modal.remove(); await loadItem(); render(); }
+async function delRun(id,modal){
+  warnDelete({
+    title:'Delete this run?',
+    detail:el('span',{},
+      el('b',{},'This cannot be undone. '),
+      'The run, its products, masterbatch, other materials and thickness readings will be permanently deleted.'),
+    onConfirm: async ()=>{
+      const {error}=await sb.from('mc_runs').delete().eq('id',id);
+      if(error){ alert(error.message); return; }
+      closeEditor(modal); await loadItem(); render();
+    }
+  });
+}
 
 /* ============================ CCV run editor (all three materials at once) ============================ */
 let editCcvRows=[], editCcvMat={}, editCcvThk={};
 const ccvItemId = code => (S.items.find(i=>i.item_no==='CCV-'+code)||{}).id;
 function newCcvRow(){ return {size:'',mr_numbers:'',metres:'',goodM:'',scrapM:'',
-  bom:{ISC:'',INS:'',OSC:''}, machine:'CCV'}; }
+  bom:{ISC:'',INS:'',OSC:''}, machine:''}; }
 
 function openCcvRun(base){
   const groups=ccvGroups();
@@ -3419,16 +3646,20 @@ function openCcvRun(base){
   const anyLayer = g && CCV_LAYERS.map(([k])=>g.L[k]).find(Boolean);
   if(base && !anyLayer){ alert('This run has no data to edit.'); return; }
 
+  const EX=anyLayer?.input_expr||{};
   if(g){
     // one row per distinct product size, pulling each layer's own BOM for that size
     const sizes=[...new Set(CCV_LAYERS.flatMap(([k])=> (g.L[k]?._items||[]).map(i=>i.size)))];
-    editCcvRows = sizes.map(size=>{
+    editCcvRows = sizes.map((size,idx)=>{
       const row=newCcvRow(); row.size=size;
       CCV_LAYERS.forEach(([k])=>{
         const it=(g.L[k]?._items||[]).find(i=>i.size===size);
         if(it){ row.bom[k]=it.bom_kg_per_km; row.mr_numbers=row.mr_numbers||it.mr_numbers||'';
-          row.metres=row.metres||it.metres; row.machine=it.machine||row.machine; }
+          row.metres=row.metres||it.metres; row.machine=it.machine||row.machine;
+          row.bomExpr=row.bomExpr||{}; row.bomExpr[k]=EX.products?.[idx]?.bom?.[k]||null; }
       });
+      const px=EX.products?.[idx]||{};
+      row.metresExpr=px.metres||null; row.goodMExpr=px.goodM||null; row.scrapMExpr=px.scrapM||null;
       return row;
     });
     if(!editCcvRows.length) editCcvRows=[newCcvRow()];
@@ -3437,30 +3668,33 @@ function openCcvRun(base){
   }
   editCcvMat={}; editCcvThk={};
   CCV_LAYERS.forEach(([k])=>{ const r=g?.L[k];
-    editCcvMat[k] = r ? {po:r.phys_wip_open, wd:r.rm_withdrawn, scr:r.scrap_kg, pc:r.phys_wip_close}
+    const lx=EX.layers?.[k]||{};
+    editCcvMat[k] = r ? {po:r.phys_wip_open, wd:r.rm_withdrawn, scr:r.scrap_kg, pc:r.phys_wip_close,
+                         poExpr:lx.po||null, wdExpr:lx.wd||null, scrExpr:lx.scr||null, pcExpr:lx.pc||null}
                        : {po:'',wd:'',scr:'',pc:''};
-    editCcvThk[k] = r ? S.thk.filter(t=>t.run_id===r.id).map(t=>({...t})) : []; });
+    editCcvThk[k] = r ? S.thk.filter(t=>t.run_id===r.id).map((t,idx)=>({...t,
+      minExpr:lx.thk?.[idx]?.min||null, aveExpr:lx.thk?.[idx]?.ave||null, maxExpr:lx.thk?.[idx]?.max||null})) : []; });
 
   const iso=v=> v? new Date(new Date(v).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16) : '';
-  const m=el('div',{class:'modal',onclick:e=>{if(e.target===m)m.remove();}});
+  const m=el('div',{class:'modal editor-modal'});
+  bindEditorClose(m);
   const c=el('div',{class:'card',style:'max-width:920px'});
   c.append(el('div',{class:'chead'},el('h2',{},g?`Edit ${g.base.replace(/^CCV /,'')}`:'New CCV run')));
   c.append(el('div',{class:'csub'},
-    'One entry covers all three materials — inner semicon, insulation and outer semicon — since they share the same run window, metres and core scrap on the sheet. Number fields accept a sum like 20+20+20 — leave the field and it resolves to 60, like Excel.'));
+    'One entry covers all three materials — inner semicon, insulation and outer semicon — since they share the same run window, metres and core scrap on the sheet. Number fields accept a sum — leave the field and it resolves to the total. The info icon then shows what you typed.'));
 
   const inp=(lab,id,type,val,help,info)=>el('div',{class:'field'},
-    el('label',{},lab, info?infoBtn(info):null),
-    type==='number'? calcInput({id,value:val}) : el('input',{id,type,step:'any',value:val===null||val===undefined?'':val}),
+    el('label',{},lab, (type!=='number' && info)?infoBtn(info):null),
+    type==='number'? calcInput({id,value:val,expr:EX[id]}) : el('input',{id,type,step:'any',value:val===null||val===undefined?'':val}),
     help?el('div',{class:'small muted',style:'margin-top:4px'},help):null);
   const h3ci=(txt,info,extra)=>el('h3',{style:'margin:18px 0 8px;display:flex;align-items:center'+(extra||'')},txt, info?infoBtn(info):null);
 
   c.append(el('div',{class:'fgrid'},
     inp('Run reference','c_ref','text', g? g.base.replace(/^CCV /,'') : '',
-      'e.g. "23.07 3x120+3x240 Al" — no "CCV" prefix and no material suffix, those are added automatically'),
+      'No “CCV” prefix and no material suffix — those are added automatically'),
     inp('Line start','c_start','datetime-local', iso(g?.started_at)),
     inp('Line stop','c_stop','datetime-local', iso(g?.stopped_at)),
-    inp('Cores','c_cores','number', anyLayer?.cores ?? 3, null,
-      'Number of cores in the cable — 3 for a three-core, 1 for single-core. Length used in the calc = (good length + scrap share) ÷ cores, so this must be right or expected consumption is off by that factor.')));
+    inp('Cores','c_cores','number', anyLayer?.cores ?? 3)));
 
   c.append(h3ci('Core scrap (metres, shared by all three materials)',
     '<b>Cable extruded then scrapped</b>Measured in metres of core, shared by all three layers. Start = purge at the beginning, '+
@@ -3484,20 +3718,20 @@ function openCcvRun(base){
     c.append(el('h3',{style:`margin:18px 0 8px;color:${CCV_COL[k]};display:flex;align-items:center`},name+' — material balance (kg)',
       infoBtn(`<b>${name} stock chain</b>Actual consumed = opening + withdrawn − bleed scrap − closing, for this layer’s own compound. `+
         'Expected = Σ (BOM × length ÷ 1000) across the products above. vs BOM = (expected − actual) ÷ expected. '+
+        'A minus means more of this layer was used than the recipe (overconsumption); a plus is a saving. '+
         'The three layers are extruded together but each has its own recipe and its own stock, so they are balanced separately.')));
     const mv=editCcvMat[k];
     c.append(el('div',{class:'fgrid'},
       el('div',{class:'field'},el('label',{},'Floor WIP — opening'),
-        calcInput({id:'c_po_'+k,value:mv.po})),
+        calcInput({id:'c_po_'+k,value:mv.po,expr:mv.poExpr})),
       el('div',{class:'field'},el('label',{},'RM withdrawn from store'),
-        calcInput({id:'c_wd_'+k,value:mv.wd})),
-      el('div',{class:'field'},el('label',{},'Bleed scrap (kg)',
-        infoBtn('The weighed bleed/purge of this material, in kg. It is subtracted from consumption, so a <b>blank</b> box charges it all to consumption; that is different from a genuine <b>0</b>. On the CCV sheets this is often a standing 23/78/30 allowance rather than a real weighing — worth checking.')),
-        calcInput({id:'c_scr_'+k,value:mv.scr}),
+        calcInput({id:'c_wd_'+k,value:mv.wd,expr:mv.wdExpr})),
+      el('div',{class:'field'},el('label',{},'Bleed scrap (kg)'),
+        calcInput({id:'c_scr_'+k,value:mv.scr,expr:mv.scrExpr}),
         el('div',{class:'small muted',style:'margin-top:4px'},
           'weighed purge for this material — blank = not counted')),
       el('div',{class:'field'},el('label',{},'Floor WIP — closing'),
-        calcInput({id:'c_pc_'+k,value:mv.pc}))));
+        calcInput({id:'c_pc_'+k,value:mv.pc,expr:mv.pcExpr}))));
     c.append(el('h3',{style:`margin:12px 0 6px;color:${CCV_COL[k]};font-size:13px`},name+' — thickness readings (mm)'));
     const thkBox=el('div'); c.append(thkBox); drawCcvThk(k,thkBox);
     c.append(el('button',{class:'btn pri sm',style:'margin:6px 0 4px',
@@ -3506,11 +3740,12 @@ function openCcvRun(base){
 
   const live=el('div',{class:'note',id:'ccvLiveCalc'}); c.append(live);
   const msg=el('span',{class:'small',style:'margin-left:10px'});
-  c.append(el('div',{class:'editfoot'},
-    el('button',{class:'btn pri',onclick:()=>saveCcvRun(g,m,msg)},'Save run'),
-    el('button',{class:'btn',onclick:()=>m.remove()},'Cancel'),
-    g&&S.canEdit? el('button',{class:'btn danger',style:'margin-left:auto',onclick:()=>delCcvRun(g,m)},'Delete'):null, msg));
-  m.append(c); document.body.append(m);
+  m.append(c);
+  m.append(el('div',{class:'editfoot'},
+    el('button',{class:'btn pri',type:'button',onclick:()=>saveCcvRun(g,m,msg)},'Save run'),
+    el('button',{class:'btn',type:'button',onclick:()=>closeEditor(m)},'Cancel'),
+    g&&S.canEdit? el('button',{class:'btn danger',type:'button',style:'margin-left:auto',onclick:()=>delCcvRun(g,m)},'Delete'):null, msg));
+  document.body.append(m);
   c.addEventListener('input',ccvRecalc); ccvRecalc();
 }
 
@@ -3521,20 +3756,20 @@ function drawCcvRows(box){
     cd.append(el('div',{class:'rowline',style:'grid-template-columns:1.4fr 1fr .6fr auto'},
       el('div',{},el('label',{},'Size / product'),el('input',{value:row.size||'',oninput:e=>row.size=e.target.value})),
       el('div',{},el('label',{},'MR number(s)'),el('input',{value:row.mr_numbers||'',oninput:e=>row.mr_numbers=e.target.value})),
-      el('div',{},el('label',{},'Line'),el('input',{value:row.machine||'',placeholder:'CCV',oninput:e=>row.machine=e.target.value})),
+      el('div',{},el('label',{},'Line'),el('input',{value:row.machine||'',oninput:e=>row.machine=e.target.value})),
       el('div',{}, editCcvRows.length>1? el('button',{class:'btn sm danger',onclick:()=>{editCcvRows.splice(i,1);drawCcvRows(box);ccvRecalc();}},'×'):null)));
     cd.append(el('div',{class:'rowline',style:'grid-template-columns:.8fr .8fr .5fr 1fr'},
-      el('div',{},el('label',{},'Good length (m)'),calcInput({value:row.goodM,oninput:e=>row.goodM=e.target.value})),
-      el('div',{},el('label',{},'Scrap share (m)'),calcInput({value:row.scrapM,oninput:e=>row.scrapM=e.target.value})),
+      el('div',{},el('label',{},'Good length (m)'),calcInput({value:row.goodM, expr:row.goodMExpr, oninput:e=>{row.goodM=e.target.value; row.goodMExpr=e.target.dataset.calcExpr||null;}})),
+      el('div',{},el('label',{},'Scrap share (m)'),calcInput({value:row.scrapM, expr:row.scrapMExpr, oninput:e=>{row.scrapM=e.target.value; row.scrapMExpr=e.target.dataset.calcExpr||null;}})),
       el('div',{},el('button',{class:'btn sm',style:'margin-top:18px',
         onclick:()=>{const cores=N($('#c_cores')?.value)||1; const gd=N(row.goodM)||0, sc=N(row.scrapM)||0;
           row.metres=((gd+sc)/cores).toFixed(3); drawCcvRows(box); ccvRecalc();}},'Calc →')),
       el('div',{},el('label',{},'Metres (used in the calc)'),
-        calcInput({value:row.metres,oninput:e=>{row.metres=e.target.value;ccvRecalc();}}))));
+        calcInput({value:row.metres, expr:row.metresExpr, oninput:e=>{row.metres=e.target.value; row.metresExpr=e.target.dataset.calcExpr||null; ccvRecalc();}}))));
     cd.append(el('div',{class:'rowline',style:'grid-template-columns:1fr 1fr 1fr'},
       ...CCV_LAYERS.map(([k,name])=> el('div',{},
         el('label',{style:`color:${CCV_COL[k]}`},'BOM '+name+' (kg/km)'),
-        calcInput({value:row.bom[k],oninput:e=>{row.bom[k]=e.target.value;ccvRecalc();}})))));
+        calcInput({value:row.bom[k], expr:row.bomExpr?.[k], oninput:e=>{row.bom[k]=e.target.value; row.bomExpr=row.bomExpr||{}; row.bomExpr[k]=e.target.dataset.calcExpr||null; ccvRecalc();}})))));
     box.append(cd);
   });
 }
@@ -3545,9 +3780,9 @@ function drawCcvThk(k,box){
   rows.forEach((row,i)=>{
     box.append(el('div',{class:'rowline',style:'grid-template-columns:.9fr .7fr .7fr .7fr auto'},
       el('div',{},el('label',{},'Position'),thkPosSelect(row)),
-      el('div',{},el('label',{},'Min (mm)'),calcInput({value:row.thk_min,oninput:e=>row.thk_min=e.target.value})),
-      el('div',{},el('label',{},'Average (mm)'),calcInput({value:row.thk_ave,oninput:e=>row.thk_ave=e.target.value})),
-      el('div',{},el('label',{},'Max (mm)'),calcInput({value:row.thk_max,oninput:e=>row.thk_max=e.target.value})),
+      el('div',{},el('label',{},'Min (mm)'),calcInput({value:row.thk_min, expr:row.minExpr, oninput:e=>{row.thk_min=e.target.value; row.minExpr=e.target.dataset.calcExpr||null;}})),
+      el('div',{},el('label',{},'Average (mm)'),calcInput({value:row.thk_ave, expr:row.aveExpr, oninput:e=>{row.thk_ave=e.target.value; row.aveExpr=e.target.dataset.calcExpr||null;}})),
+      el('div',{},el('label',{},'Max (mm)'),calcInput({value:row.thk_max, expr:row.maxExpr, oninput:e=>{row.thk_max=e.target.value; row.maxExpr=e.target.dataset.calcExpr||null;}})),
       el('div',{}, el('button',{class:'btn sm danger',onclick:()=>{rows.splice(i,1);drawCcvThk(k,box);}},'×'))));
   });
 }
@@ -3575,7 +3810,7 @@ function ccvRecalc(){
     if(exp||po||wd) any=true;
     const vp = exp? (exp-act)/exp*100 : null;
     const scrapKg = (exp&&totM&&scrapM)? exp*(scrapM/cores)/totM : null;
-    lines.push(`<div style="margin:4px 0"><b style="color:${CCV_COL[k]}">${name}</b> — expected <b>${num(exp)} kg</b>, actual <b>${num(act)} kg</b>, vs BOM <b>${vp===null?'—':pct(-vp)}</b>`
+    lines.push(`<div style="margin:4px 0"><b style="color:${CCV_COL[k]}">${name}</b> — expected <b>${num(exp)} kg</b>, actual <b>${num(act)} kg</b>, vs BOM <b class="${overCls(vp)}">${vp===null?'—':pct(vp)}</b>`
       +(scrapKg!==null?` <span class="muted">· ${num(scrapKg)} kg of it on scrapped cable (${(scrapKg/exp*100).toFixed(1)}%)</span>`:'')
       +`${scr===null?' <span style="color:var(--crit)">— bleed scrap blank</span>':''}</div>`);
   });
@@ -3618,6 +3853,15 @@ async function saveCcvRun(g, modal, msg){
     msg.className='small err'; return;
   }
   if(!rows.length){ msg.textContent='At least one product with a size and metres is required.'; msg.className='small err'; return; }
+  const input_expr={
+    c_cores:fieldExpr('c_cores'), c_ss:fieldExpr('c_ss'), c_sj:fieldExpr('c_sj'), c_sp:fieldExpr('c_sp'),
+    products:rows.map(r=>({metres:r.metresExpr||null, goodM:r.goodMExpr||null, scrapM:r.scrapMExpr||null,
+      bom:{ISC:r.bomExpr?.ISC||null, INS:r.bomExpr?.INS||null, OSC:r.bomExpr?.OSC||null}})),
+    layers:Object.fromEntries(CCV_LAYERS.map(([k])=>[k,{
+      po:fieldExpr('c_po_'+k), wd:fieldExpr('c_wd_'+k), scr:fieldExpr('c_scr_'+k), pc:fieldExpr('c_pc_'+k),
+      thk:(editCcvThk[k]||[]).map(t=>({min:t.minExpr||null, ave:t.aveExpr||null, max:t.maxExpr||null}))
+    }]))
+  };
   msg.textContent='Saving…'; msg.className='small muted';
 
   for (const [k,name] of CCV_LAYERS){
@@ -3628,7 +3872,7 @@ async function saveCcvRun(g, modal, msg){
     const payload={ item_id:itemId, sheet_ref:`CCV ${ref} · ${k}`, record_type:'run',
       started_at:start?new Date(start).toISOString():null, stopped_at:stop?new Date(stop).toISOString():null,
       cores, scrap_start_m:ss, scrap_joint_m:sj, scrap_stop_m:sp,
-      phys_wip_open:mv.po, phys_wip_close:mv.pc, rm_withdrawn:mv.wd, scrap_kg:mv.scr };
+      phys_wip_open:mv.po, phys_wip_close:mv.pc, rm_withdrawn:mv.wd, scrap_kg:mv.scr, input_expr };
     let runId = g?.L[k]?.id, err;
     if(runId){ ({error:err}=await sb.from('mc_runs').update(payload).eq('id',runId)); }
     else { const {data,error}=await sb.from('mc_runs').insert(payload).select('id').single(); err=error; runId=data?.id; }
@@ -3639,7 +3883,7 @@ async function saveCcvRun(g, modal, msg){
     for (const row of rows){
       const pid = await resolveCcvProductId(itemId, row.size, row.bom[k]);
       items.push({run_id:runId, size:row.size, product_id:pid, mr_numbers:row.mr_numbers||null,
-        bom_kg_per_km:N(row.bom[k])||0, metres:N(row.metres), machine:row.machine||'CCV'});
+        bom_kg_per_km:N(row.bom[k])||0, metres:N(row.metres), machine:row.machine||null});
     }
     if(items.length){ const {error}=await sb.from('mc_run_items').insert(items);
       if(error){ msg.textContent=`${name}: ${error.message}`; msg.className='small err'; return; } }
@@ -3651,12 +3895,19 @@ async function saveCcvRun(g, modal, msg){
     if(thkRows.length){ const {error}=await sb.from('mc_thickness').insert(thkRows);
       if(error){ msg.textContent=`${name}: ${error.message}`; msg.className='small err'; return; } }
   }
-  modal.remove(); await loadItem(); render();
+  closeEditor(modal); await loadItem(); render();
 }
 async function delCcvRun(g, modal){
-  if(!confirm('Delete this run — all three materials — and its readings?')) return;
-  for (const [k] of CCV_LAYERS){ const id=g.L[k]?.id; if(id) await sb.from('mc_runs').delete().eq('id',id); }
-  modal.remove(); await loadItem(); render();
+  warnDelete({
+    title:'Delete this CCV run?',
+    detail:el('span',{},
+      el('b',{},'This cannot be undone. '),
+      'All three materials on this sheet — inner semicon, insulation and outer semicon — plus their products and thickness readings will be permanently deleted.'),
+    onConfirm: async ()=>{
+      for (const [k] of CCV_LAYERS){ const id=g.L[k]?.id; if(id) await sb.from('mc_runs').delete().eq('id',id); }
+      closeEditor(modal); await loadItem(); render();
+    }
+  });
 }
 async function saveWip(){
   const g=i=>N($('#'+i)?.value), t=i=>$('#'+i)?.value||null, msg=$('#wipMsg');
@@ -3705,20 +3956,23 @@ async function loadItem(){
     sb.from('mc_model').select('*').eq('item_id',iid).order('effective_from',{ascending:false}).limit(1).maybeSingle(),
     sb.from('mc_nav_snapshots').select('*').eq('item_id',iid).order('captured_at')
   ]);
-  const led = await fetchAll(()=>sb.from('mc_nav_ledger').select('*').eq('item_id',iid).order('posting_date').order('entry_no'));
   S.products=prods||[]; S.runs=runs||[]; S.model=model||{fixed_loss_kg:0,variable_uplift_pct:0,expected_scrap_pct:0,tolerance_pct:3};
-  S.snaps=snaps||[]; S.ledger=led||[];
+  S.snaps=snaps||[];
   const ids=S.runs.map(r=>r.id);
-  if(ids.length){
-    const [items,mats,thk]=await Promise.all([
-      fetchAll(()=>sb.from('mc_run_items').select('*').in('run_id',ids).order('id')),
-      fetchAll(()=>sb.from('mc_run_materials').select('*').in('run_id',ids).order('id')),
-      fetchAll(()=>sb.from('mc_thickness').select('*').in('run_id',ids).order('run_id').order('seq'))
-    ]);
-    S.mats=mats||[]; S.thk=thk||[];
-    S.runs.forEach(r=>r._items=[]);
-    (items||[]).forEach(i=>{ const r=S.runs.find(x=>x.id===i.run_id); if(r) r._items.push(i); });
-  } else { S.mats=[]; S.thk=[]; }
+  const ledP = fetchAll(()=>sb.from('mc_nav_ledger').select('*').eq('item_id',iid).order('posting_date').order('entry_no'));
+  const kidsP = ids.length ? Promise.all([
+    fetchAll(()=>sb.from('mc_run_items').select('*').in('run_id',ids).order('id')),
+    fetchAll(()=>sb.from('mc_run_materials').select('*').in('run_id',ids).order('id')),
+    fetchAll(()=>sb.from('mc_thickness').select('*').in('run_id',ids).order('run_id').order('seq')),
+    sb.from('mc_runs').select('id,input_expr').in('id',ids)
+  ]) : Promise.resolve([[],[],[],{data:[]}]);
+  const [led, kids] = await Promise.all([ledP, kidsP]);
+  const [items,mats,thk,exprRes] = kids;
+  S.ledger=led||[]; S.mats=mats||[]; S.thk=thk||[];
+  const byId=new Map(S.runs.map(r=>[r.id,r]));
+  S.runs.forEach(r=>r._items=[]);
+  (items||[]).forEach(i=>{ const r=byId.get(i.run_id); if(r) r._items.push(i); });
+  (exprRes?.data||[]).forEach(e=>{ const r=byId.get(e.id); if(r) r.input_expr=e.input_expr; });
   S.specOverride=null;
   enrich();
 }
@@ -3735,13 +3989,16 @@ async function loadCombined(){
   S.snaps=[]; S.ledger=[]; S.mats=[];
   const rids=S.runs.map(r=>r.id);
   if(rids.length){
-    const [items,thk]=await Promise.all([
+    const [items,thk,exprRes]=await Promise.all([
       fetchAll(()=>sb.from('mc_run_items').select('*').in('run_id',rids).order('id')),
-      fetchAll(()=>sb.from('mc_thickness').select('*').in('run_id',rids).order('run_id').order('seq'))
+      fetchAll(()=>sb.from('mc_thickness').select('*').in('run_id',rids).order('run_id').order('seq')),
+      sb.from('mc_runs').select('id,input_expr').in('id',rids)
     ]);
     S.thk=thk||[];
+    const byId=new Map(S.runs.map(r=>[r.id,r]));
     S.runs.forEach(r=>r._items=[]);
-    (items||[]).forEach(i=>{ const r=S.runs.find(x=>x.id===i.run_id); if(r) r._items.push(i); });
+    (items||[]).forEach(i=>{ const r=byId.get(i.run_id); if(r) r._items.push(i); });
+    (exprRes?.data||[]).forEach(e=>{ const r=byId.get(e.id); if(r) r.input_expr=e.input_expr; });
   } else S.thk=[];
   S.specOverride=null;
   enrich();
